@@ -1,0 +1,228 @@
+﻿@page "/"
+@using System.Net;
+@using System.Net.Http
+@using System.IO
+@using System.Threading.Tasks
+@using eoj12.DCS.Toolkit.Data;
+@*@inject ModManagerService ModManagerService;*@
+
+<h1>DCS World Mod Manager</h1>
+
+<div><button class="btn btn-primary" @onclick="ScanMod">Scan my Mods</button></div>
+<div class="form-group">
+    <label for="url">Enter URL:</label>
+    <input type="text" class="form-control" @bind-value="Url" />
+    <button class="btn btn-primary" @onclick="DownloadFileDefinition">Load Definition file</button>
+</div>
+<div></div>
+
+
+@if (IsLoading)
+{
+    <p><em>Downloading file...</em></p>
+}
+@if(IsReady && ModDefinitionList!=null)
+{
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Description</th>
+                <th>Version</th>
+                <th>Size</th>
+                <th></th>
+                <th></th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var modDefinition in ModDefinitionList)
+            {
+                <tr>
+                    <td>@modDefinition.Title</td>
+                    <td>@modDefinition.Description</td>
+                    <td>@modDefinition.Version</td>
+                    <td>@modDefinition.Size</td>
+                    <td>
+                        @if (modDefinition.IsDownloaded)
+                        {
+                            <span>Up to date</span>
+                        }else if (modDefinition.IsDownloading)
+                        {
+                            <span>Downloading...</span>
+                        }
+                        else if (modDefinition.IsExtracting)
+                        {
+                            <span>Extracting...</span>
+                        }
+                        else
+                        {
+                            <button class="btn btn-primary btn-sm" @onclick="@(e=>DownloadMod(modDefinition))">Download</button>
+                        }
+                    </td>
+                    <td>
+                        @if (modDefinition.IsDisable==false &&(modDefinition.IsDownloaded || modDefinition.IsPreviousVersion))
+                        {
+                            <button class="btn btn-secondary btn-sm" @onclick="@(e=>DisableMod(modDefinition))">Disable</button>
+                        }
+                        else if (modDefinition.IsDisable  && (modDefinition.IsDownloaded || modDefinition.IsPreviousVersion))
+                        {
+                            <button class="btn btn-secondary btn-sm" @onclick="@(e=>EnableMod(modDefinition))">Enable</button>
+                        }
+                    </td>
+                    <td>
+                        @if(modDefinition.IsDownloaded || modDefinition.IsPreviousVersion){
+                            <button class="btn btn-danger btn-sm" @onclick="@(e=>DeleteMod(modDefinition))">Delete</button>
+                            
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+
+    private bool IsLoading = false;
+    private bool IsReady = false;
+    private string Url = "https://drive.google.com/uc?id=1AEDTUYVP9Zj0EEeEyjKBsLyLeifNQgr4&export=download";
+    private List<Mod> ModDefinitionList= null;
+
+    private ModManagerService modManagerService = new ModManagerService();
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            StateHasChanged();
+            await Task.Run(() => ModDefinitionList =modManagerService.LocalDb.CopyMods());
+            IsReady = true;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            throw;
+        }
+    }
+
+    private async Task ScanMod()
+    {
+        try
+        {
+            IsLoading = true;
+            IsReady = false;
+            StateHasChanged();
+            var localMods = modManagerService.ScanMods();
+            ModDefinitionList = modManagerService.LocalDb.CopyMods();
+            IsReady = true;
+            IsLoading = false;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            throw;
+        }
+    }
+
+    private async Task DownloadFileDefinition()
+    {
+        try
+        {
+            IsReady = false;
+            IsLoading = true;
+            StateHasChanged();
+            await modManagerService.DownloadFileDefinitionAsync(ModDefinitionList,Url);     
+            IsLoading = false;
+            IsReady = true;
+            StateHasChanged();
+        }
+        catch(Exception ex)
+        {
+            throw new Exception("");
+
+        }
+    }
+    private async Task DownloadMod(Mod modDefinition)
+    {
+        try
+        {
+            StateHasChanged();
+            modDefinition.IsDownloading = true;
+            var url = modDefinition.Url.ToString();
+            var contentStream = await modManagerService.DownloadFileAsync(url);
+
+            modDefinition.IsDownloading = false;
+            modDefinition.IsExtracting = true;
+            StateHasChanged();
+            modDefinition.ModEntries = modManagerService.ExtractFileFromStream(contentStream, @$"{modManagerService.DCSSaveGamesPath}\{modDefinition.TargetFolder}");
+            modDefinition.IsDownloaded = true;
+            modManagerService.LocalDb.Mods.Add(modDefinition);
+            modDefinition.IsExtracting = false;
+            modManagerService.SaveLocalDb();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+
+            throw;
+        }
+    }
+    private async Task DeleteMod(Mod modDefinition)
+    {
+        try
+        {
+            StateHasChanged();
+            IsReady = false;
+            IsLoading = true;
+            modManagerService.DeleteMod(modDefinition);
+            ModDefinitionList.Remove(modDefinition);
+            IsReady = true;
+            IsLoading = false;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+
+            throw;
+        }
+    }
+
+    private async Task DisableMod(Mod modDefinition)
+    {
+        try
+        {
+            StateHasChanged();
+            modManagerService.DisableMod(modDefinition);
+            modDefinition.IsDisable = true;
+            modDefinition.IsDownloaded = true;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+
+            throw;
+        }
+    }
+
+    private async Task EnableMod(Mod modDefinition)
+    {
+        try
+        {
+            StateHasChanged();
+            modManagerService.EnableMod(modDefinition);
+            modDefinition.IsDisable = false;
+            modDefinition.IsDownloaded = true;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+
+            throw;
+        }
+    }
+
+
+}
+
+
