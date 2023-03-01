@@ -1,0 +1,26 @@
+[
+  {
+    "Title": "UH-60L",
+    "Description": "DCS UH-60L Mod",
+    "Version": "1.3.1",
+    "Size": "1.08 GB",
+    "Url": "https://github.com/Kinkkujuustovoileipa/uh-60l/releases/download/1.3/UH-60L.1.3.1.zip",
+    "TargetFolder": ""
+  },
+  {
+    "Title": "FRENCHPACK",
+    "Description": "FRENCHPACK",
+    "Version": "4.9.1",
+    "Size": "1.88 GB",
+    "Url": "https://drive.google.com/uc?export=download&id=1i88vAEulF-VeS8jfCnOJXqtU53LbuqVA&confirm=t&uuid=8edf8164-8e55-4859-8a52-85dd92aeb58f&at=ALgDtsxOg-eDFuyptLfy6UnwwqeT:1677165836536",
+    "TargetFolder": "\\Mods\\Tech"
+  },
+  {
+    "Title": "425 Blackshark Liveries Pack",
+    "Description": "(KA-50 BlackShark : Camo Desert, GreenBlack, Grey + Custom 425 Pilots)",
+    "Version": "1.0",
+    "Size": "132 MB",
+    "Url": "https://drive.google.com/uc?export=download&id=1JBNAKVh6-Znt9k7F3q6jYjuJS9BSyvm9&confirm=t&uuid=602eed44-03b5-4309-83aa-ec4f5738eed8&at=ALgDtszFWqMMUlpwaHMoBk57-91M:1677180994147",
+    "TargetFolder": ""
+  }
+]

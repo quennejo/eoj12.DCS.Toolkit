@@ -36,7 +36,6 @@ namespace eoj12.DCS.Toolkit.Data
             var dbModDefinitionList = LocalDb.Mods;
             LocalDb.ModDefinitionUrl = url;
             SaveLocalDb();
-            //ModDefinitionList = squadronModeDefinitionList;
 
             foreach (var squadronMod in squadronModeDefinitionList)
             {
@@ -44,21 +43,15 @@ namespace eoj12.DCS.Toolkit.Data
                 if (modDefinition == null)
                 {
                     modDefinitionList.Add(squadronMod);
-                    //modDefinitionList.Add(new Mod()
-                    //{
-                    //    Title = squadronMod.Title,
-                    //    Description = squadronMod.Description,
-                    //    Size = squadronMod.Size,
-                    //    Version = squadronMod.Version,
-                    //    TargetFolder = squadronMod.TargetFolder,
-                    //    IsDownloaded = false,
-                    //    Url = squadronMod.Url,
-                    //});
                 }
                 else if (squadronMod.Version.ToLower() != modDefinition.Version.ToLower())
                 {
                     modDefinition.IsPreviousVersion = true;
                     modDefinition.IsDownloaded = true;
+                    modDefinition.Url = squadronMod.Url;
+                    modDefinition.Version = squadronMod.Version;
+                    modDefinition.Size = squadronMod.Size;
+
                 }
             }
             modDefinitionList.OrderBy(m => m.Title).ToList();

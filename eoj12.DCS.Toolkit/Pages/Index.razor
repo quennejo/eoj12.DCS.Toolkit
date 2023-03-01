@@ -45,7 +45,7 @@
                     <td>@modDefinition.Version</td>
                     <td>@modDefinition.Size</td>
                     <td>
-                        @if (modDefinition.IsDownloaded)
+                        @if (modDefinition.IsDownloaded & modDefinition.IsPreviousVersion ==false)
                         {
                             <span>Up to date</span>
                         }else if (modDefinition.IsDownloading)
@@ -55,6 +55,10 @@
                         else if (modDefinition.IsExtracting)
                         {
                             <span>Extracting...</span>
+                        }
+                        else if (modDefinition.IsPreviousVersion)
+                        {
+                            <button class="btn btn-success btn-sm" @onclick="@(e=>UpdateMod(modDefinition))">Update</button>
                         }
                         else
                         {
@@ -168,6 +172,33 @@
             throw;
         }
     }
+    private async Task UpdateMod(Mod modDefinition)
+    {
+        try
+        {
+            StateHasChanged();
+            modDefinition.IsDownloading = true;
+            var url = modDefinition.Url.ToString();
+            var contentStream = await modManagerService.DownloadFileAsync(url);
+            modDefinition.IsDownloading = false;
+            modDefinition.IsExtracting = true;
+            StateHasChanged();
+            modManagerService.DeleteMod(modDefinition);
+            modDefinition.ModEntries = modManagerService.ExtractFileFromStream(contentStream, @$"{modManagerService.DCSSaveGamesPath}\{modDefinition.TargetFolder}");
+            modDefinition.IsDownloaded = true;
+            modDefinition.IsPreviousVersion = false;
+            modManagerService.LocalDb.Mods.Add(modDefinition);
+            modDefinition.IsExtracting = false;
+            modManagerService.SaveLocalDb();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+
+            throw;
+        }
+    }
+
     private async Task DeleteMod(Mod modDefinition)
     {
         try
