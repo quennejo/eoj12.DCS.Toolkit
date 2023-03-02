@@ -57,29 +57,41 @@ namespace eoj12.DCS.Toolkit.Data
             modDefinitionList.OrderBy(m => m.Title).ToList();
         } 
 
-        public List<Mod> ScanMods() { 
+        public List<Mod> ScanMods()
+        {
             List<Mod> localMods = new List<Mod>();
-            var aircraftPath = $@"{DCSSaveGamesPath}\Mods\aircraft";
-            var techPath = $@"{DCSSaveGamesPath}\Mods\tech";
-            var liveries = $@"{DCSSaveGamesPath}\Liveries";
+            var aircraftPath = $@"\Mods\aircraft";
+            var techPath = $@"\Mods\tech";
+            var liveries = $@"\liveries";
 
-            DirectoryInfo directoryInfo = new DirectoryInfo(aircraftPath);
+            ScanModsFolder(localMods, aircraftPath);
+            ScanModsFolder(localMods, techPath);
+            ScanModsFolder(localMods, liveries);
+
+            return localMods;
+        }
+
+        private void ScanModsFolder(List<Mod> localMods, string modPath)
+        {
+            DirectoryInfo directoryInfo = new DirectoryInfo(DCSSaveGamesPath +modPath);
             if (directoryInfo.Exists)
             {
-                var directories =directoryInfo.GetDirectories();
+                var directories = directoryInfo.GetDirectories();
                 foreach (var modDirectory in directories)
                 {
-                    var localMod = new Mod(modDirectory.Name, "", "", "", @"\Mods\aircraft\" + modDirectory.Name,true);
-                    var subDirectories =modDirectory.GetDirectories("*.*", SearchOption.AllDirectories);
+                    var localMod = new Mod(modDirectory.Name, "", "", "", @$"{modPath}\" + modDirectory.Name, true);
+                    var subDirectories = modDirectory.GetDirectories("*.*", SearchOption.AllDirectories);
                     ModEntry modEntry = new ModEntry(modDirectory.Name, modDirectory.FullName, true);
                     localMod.ModEntries.Add(modEntry);
-                    foreach (var subDirectory in subDirectories) {
+                    foreach (var subDirectory in subDirectories)
+                    {
 
-                       modEntry = new ModEntry(subDirectory.Name, subDirectory.FullName, true);
-                       localMod.ModEntries.Add(modEntry);                     
+                        modEntry = new ModEntry(subDirectory.Name, subDirectory.FullName, true);
+                        localMod.ModEntries.Add(modEntry);
                     }
                     var files = modDirectory.GetFiles("*.*", SearchOption.AllDirectories);
-                    foreach (FileInfo f in files) {
+                    foreach (FileInfo f in files)
+                    {
                         modEntry = new ModEntry(f.Name, f.FullName, false);
                         localMod.ModEntries.Add(modEntry);
                     }
@@ -87,15 +99,14 @@ namespace eoj12.DCS.Toolkit.Data
                 }
             }
             foreach (var mod in localMods)
-            { 
-                if(!LocalDb.Mods.Any(m=>m.Title == mod.Title))  
+            {
+                if (!LocalDb.Mods.Any(m => m.Title == mod.Title))
                     LocalDb.Mods.Add(mod);
 
             }
             SaveLocalDb();
-
-            return localMods;
         }
+
         public void DeleteMod(Mod mod)
         {
             var dbMod = LocalDb.Mods.FirstOrDefault(m=>m.Title == mod.Title && m.Version ==m.Version);  
