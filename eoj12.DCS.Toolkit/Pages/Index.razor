@@ -16,7 +16,27 @@
 </div>
 <div></div>
 
-
+<button class="btn btn-success" @onclick="NewMod">New Mod Definition</button>
+<div class="form-group">
+    <label for="url">Title*</label>
+    <input type="text" class="form-control" @bind-value="TempMod.Title" />
+    <label for="url">Description</label>
+    <input type="text" class="form-control" @bind-value="TempMod.Description" />
+    <label for="url">Version</label>
+    <input type="text" class="form-control" @bind-value="TempMod.Version" />
+    <label for="url">Size</label>
+    <input type="text" class="form-control" @bind-value="TempMod.Size" />
+    <label for="url">Url</label>
+    <input type="text" class="form-control" @bind-value="TempMod.Url" />
+    <label for="url">Target Folder</label>
+ 
+    <InputSelect class="form-control" @bind-Value="TempMod.TargetFolder">
+        <option value=@Names.Folders.AIRCRAFT>Aircraft</option>
+        <option value=@Names.Folders.LIVERIES>Liveries</option>
+        <option value=@Names.Folders.TECH>Tech</option>
+    </InputSelect>
+    <button class="btn btn-success" @onclick="@(e=>CreateMod(TempMod))">Create Mod Definition</button>
+</div>
 @if (IsLoading)
 {
     <p><em>Downloading file...</em></p>
@@ -51,6 +71,7 @@
                         }else if (modDefinition.IsDownloading)
                         {
                             <span>Downloading...</span>
+                            
                         }
                         else if (modDefinition.IsExtracting)
                         {
@@ -88,13 +109,15 @@
 }
 
 @code {
-
+    private bool IsNew = false;
     private bool IsLoading = false;
     private bool IsReady = false;
     private string Url = "https://drive.google.com/uc?id=1AEDTUYVP9Zj0EEeEyjKBsLyLeifNQgr4&export=download";
     private List<Mod> ModDefinitionList= null;
+    private Mod TempMod = new Mod();
 
     private ModManagerService modManagerService = new ModManagerService();
+
     protected override async Task OnInitializedAsync()
     {
         try
@@ -110,6 +133,31 @@
         }
     }
 
+    private async Task NewMod()
+    {
+        try
+        {
+            IsNew = true;
+            //ModDefinitionList.Add(new Mod());
+        }
+        catch (Exception ex)
+        {
+            throw;
+        }
+    }
+    private async Task CreateMod(Mod modDefinition)
+    {
+        try
+        {
+            IsNew = true;
+            modManagerService.AddMod(modDefinition);
+            //ModDefinitionList.Add(new Mod());
+        }
+        catch (Exception ex)
+        {
+            throw;
+        }
+    }
     private async Task ScanMod()
     {
         try
@@ -144,7 +192,6 @@
         catch(Exception ex)
         {
             throw new Exception("");
-
         }
     }
     private async Task DownloadMod(Mod modDefinition)
@@ -155,7 +202,6 @@
             modDefinition.IsDownloading = true;
             var url = modDefinition.Url.ToString();
             var contentStream = await modManagerService.DownloadFileAsync(url);
-
             modDefinition.IsDownloading = false;
             modDefinition.IsExtracting = true;
             StateHasChanged();

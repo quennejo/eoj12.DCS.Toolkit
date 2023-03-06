@@ -1,7 +1,11 @@
-﻿using System.IO.Compression;
+﻿using System.IO;
+using System.IO.Compression;
 using SharpCompress.Archives.Rar;
 using SharpCompress.Common;
 using SharpCompress.Archives;
+using eoj12.DCS.Toolkit.Names;
+using System.Net;
+using System;
 
 namespace eoj12.DCS.Toolkit.Data
 {
@@ -60,13 +64,11 @@ namespace eoj12.DCS.Toolkit.Data
         public List<Mod> ScanMods()
         {
             List<Mod> localMods = new List<Mod>();
-            var aircraftPath = $@"\Mods\aircraft";
-            var techPath = $@"\Mods\tech";
-            var liveries = $@"\liveries";
 
-            ScanModsFolder(localMods, aircraftPath);
-            ScanModsFolder(localMods, techPath);
-            ScanModsFolder(localMods, liveries);
+
+            ScanModsFolder(localMods, Folders.AIRCRAFT);
+            ScanModsFolder(localMods, Folders.TECH);
+            ScanModsFolder(localMods, Folders.LIVERIES);
 
             return localMods;
         }
@@ -106,6 +108,81 @@ namespace eoj12.DCS.Toolkit.Data
             }
             SaveLocalDb();
         }
+
+
+        public async void AddMod(Mod mod)
+        {
+
+            var fileInfo =GetFileInfo(mod.Url);
+            var url = "";
+            if (fileInfo != null && fileInfo.FileExtension.ToLower() == ".zip" || fileInfo.FileExtension.ToLower() == ".rar")
+            {
+                var dbMod = new Mod(mod.Title, mod.Description, mod.Version, url, mod.TargetFolder, false)
+                {
+                    Size = fileInfo.FileSize.ToString(),
+                };
+            }
+            else if (fileInfo.ContentType == "text/html; charset=utf-8" && fileInfo.ResponseUri.Host == "drive.google.com")
+            {
+
+                //https://drive.google.com/file/d/1JM8nofJk0VH5U6uHxK6-vrMvtrzhlu0I/view?usp=sharing
+                var ids =mod.Url.Split('/');
+                var documentId = "";
+                if (ids.Length > 0)
+                { 
+                    documentId = ids[5].Trim();
+                    
+                }
+                //"https://drive.google.com/uc?export=download&id=1i88vAEulF-VeS8jfCnOJXqtU53LbuqVA&confirm=t&uuid=8edf8164-8e55-4859-8a52-85dd92aeb58f&at=ALgDtsxOg-eDFuyptLfy6UnwwqeT:1677165836536",
+                string newUrl = string.Format("https://drive.google.com/uc?export=download&id={0}",documentId );
+                var content = await GetWebContent(mod.Url);
+
+                string confirmTocken = "";
+                newUrl = string.Format("https://drive.google.com/uc?export=download&id={0}&confirm=t&uuid={1}",documentId,confirmTocken);
+                //var content = await GetWebContent(mod.Url);
+                ;
+            }
+            ;
+            ////LocalDb.Mods.Remove(dbMod);
+            //SaveLocalDb();
+        }
+
+        static ModInfo GetFileInfo(string url)
+        {
+            ModInfo modInfo = null;
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+            request.Method = "HEAD";
+            HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+            string fileName = "";
+            string fileExtension = "";
+            if (response.StatusCode == HttpStatusCode.OK)
+            {
+                if (response.Headers["Content-Disposition"] != null)
+                {
+                    fileName = response.Headers["Content-Disposition"];
+                    fileName = fileName.Replace("attachment; filename=", "");
+                    fileName = fileName.Replace("\"", "");
+                    fileExtension = Path.GetExtension(fileName);
+                }
+
+                long fileSize = response.ContentLength;
+                DateTime modificationDate;
+                DateTime.TryParse(response.Headers["Last-Modified"], out modificationDate);
+                
+                modInfo = new ModInfo(fileName, fileExtension, fileSize, modificationDate,response.ContentType,response.ResponseUri);
+            }
+            response.Close();
+            return modInfo;
+        }
+
+        static async Task<string> GetWebContent(string url)
+        {
+            using (HttpClient client = new HttpClient())
+            {
+                return await client.GetStringAsync(url);
+            }
+        }
+
 
         public void DeleteMod(Mod mod)
         {
@@ -193,6 +270,8 @@ namespace eoj12.DCS.Toolkit.Data
             SaveLocalDb();
 
         }
+
+
         public async Task<Stream> DownloadFileAsync( string url)
         {
             HttpClient client = new HttpClient();
@@ -263,34 +342,34 @@ namespace eoj12.DCS.Toolkit.Data
         }
   
 
-        public static List<ModEntry> ExtractRarFromStream(Stream stream, string outputPath)
-        {
-            using (var archive = RarArchive.Open(stream))
-            {
-                List<ModEntry> entries = new List<ModEntry>();
-                foreach (var entry in archive.Entries)
-                {
-                    ModEntry modEntry = new ModEntry()
-                    {
-                        //Name = entry.,
-                        //CompressedLength = entry.CompressedLength,
-                        //FullName = entry.FullName,
-                        //LastWriteTime = entry.LastWriteTime,
-                        //Length = entry.Length
-                    };
-                    entries.Add(modEntry);
-                    if (!entry.IsDirectory)
-                    {
-                        entry.WriteToDirectory(outputPath, new ExtractionOptions
-                        {
-                            ExtractFullPath = true,
-                            Overwrite = true
-                        });
-                    }
-                }
-            }
-            return new List<ModEntry>();
-        }
+        //public static List<ModEntry> ExtractRarFromStream(Stream stream, string outputPath)
+        //{
+        //    using (var archive = RarArchive.Open(stream))
+        //    {
+        //        List<ModEntry> entries = new List<ModEntry>();
+        //        foreach (var entry in archive.Entries)
+        //        {
+        //            ModEntry modEntry = new ModEntry()
+        //            {
+        //                //Name = entry.,
+        //                //CompressedLength = entry.CompressedLength,
+        //                //FullName = entry.FullName,
+        //                //LastWriteTime = entry.LastWriteTime,
+        //                //Length = entry.Length
+        //            };
+        //            entries.Add(modEntry);
+        //            if (!entry.IsDirectory)
+        //            {
+        //                entry.WriteToDirectory(outputPath, new ExtractionOptions
+        //                {
+        //                    ExtractFullPath = true,
+        //                    Overwrite = true
+        //                });
+        //            }
+        //        }
+        //    }
+        //    return new List<ModEntry>();
+        //}
         public static List<ModEntry> ExtractRarFromFileInfo(FileInfo fileInfo, string outputPath)
         {
             List<ModEntry> entries = new List<ModEntry>();
