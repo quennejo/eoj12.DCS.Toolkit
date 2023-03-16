@@ -4,58 +4,83 @@
 @using System.IO
 @using System.Threading.Tasks
 @using eoj12.DCS.Toolkit.Data;
-@*@using RadzenDataGrid.Data;*@
-@*@inject ModManagerService ModManagerService;*@
-@*@using RadzenBlazorDemos.Data
-@using RadzenBlazorDemos.Models.Northwind
-@using Microsoft.EntityFrameworkCore
 
-@inherits DbContextPage*@
-<RadzenButton ButtonStyle="ButtonStyle.Success" Icon="add_circle_outline" class="mt-2 mb-4" Text="Add New Order" Click="@InsertRow" Disabled=@(modToInsert != null || modToUpdate != null) />
+@*<button class="btn btn-primary" @onclick="@SaveChanges">Save Changes</button>*@
 
-<RadzenDataGrid @ref="ModsGrid" AllowFiltering="true" AllowColumnResize="true" AllowAlternatingRows="false" FilterMode="FilterMode.Advanced" AllowSorting="true" PageSize="5" AllowPaging="true" PagerHorizontalAlign="HorizontalAlign.Left" ShowPagingSummary="true"
-                Data="@ModDefinitionList" TItem="Mod" ColumnWidth="300px" LogicalFilterOperator="LogicalFilterOperator.Or" RowCreate="@OnCreateRow">
+@*<RadzenDataGrid TItem="Mod" Data="@Mods" PageSize="10" EditMode="DataGridEditMode.Single" RowUpdate="@OnUpdateRow" EditMode="DataGridEditMode.Single" rowUpdate="@OnUpdateRow">*@
+<RadzenButton ButtonStyle="ButtonStyle.Success" Icon="add_circle_outline" class="mt-2 mb-4" Text="Add New Mod Definition" Click="@InsertRow" Disabled=@(modToInsert != null || modToUpdate != null) />
+<RadzenDataGrid @ref="modsGrid" AllowAlternatingRows="false" AllowFiltering="true" AllowPaging="true" PageSize="10" AllowSorting="true" EditMode="DataGridEditMode.Single"
+                Data="@Mods" TItem="Mod" RowUpdate="@OnUpdateRow" RowCreate="@OnCreateRow" Sort="@Reset" Page="@Reset" Filter="@Reset">
     <Columns>
-        <RadzenDataGridColumn TItem="Mod" Property="Title" Filterable="true" Title="Title"  />
-@*        <Template Context="mod">
-                @mod
-            </Template>*@
-           @* <EditTemplate Context="mod">
-            <RadzenTextBox @bind-Value="mod.Title" Style="width:100%; display: block" Name="Title" />
-            </EditTemplate>*@
-        <RadzenDataGridColumn TItem="Mod" Property="Description" Title="Description" Frozen="true" Width="160px" />
-        <RadzenDataGridColumn TItem="Mod" Property="Version" Title="Version" Frozen="true" Width="160px" />
-        <RadzenDataGridColumn TItem="Mod" Property="Size" Title="Size" Frozen="true" Width="160px" />
-        <RadzenDataGridColumn TItem="Mod" Property="TargetFolder" Title="TargetFolder" Frozen="true" Width="160px" />
-       @* <RadzenDataGridColumn TItem="Employee" Title="Photo" Frozen="true" Sortable="false" Filterable="false" Width="80px" TextAlign="TextAlign.Center">
-            <Template Context="data">
-                <RadzenImage Path="@data.Photo" class="rz-gravatar" />
-            </Template>
+        <RadzenDataGridColumn TItem="Mod" Property="Title" Title="Title">
+            <EditTemplate Context="mod">
+                <RadzenTextBox @bind-Value="mod.Title" Style="width:100%; display: block" Name="Title" />
+                <RadzenRequiredValidator Text="Title is required" Component="Title" Popup="true" />
+            </EditTemplate>
         </RadzenDataGridColumn>
-        <RadzenDataGridColumn TItem="Employee" Property="FirstName" Title="First Name" Frozen="true" Width="160px" />
-        <RadzenDataGridColumn TItem="Employee" Property="LastName" Title="Last Name" Width="160px" />
-        <RadzenDataGridColumn TItem="Employee" Property="Title" Title="Job Title" Width="200px" />
-        <RadzenDataGridColumn TItem="Employee" Property="TitleOfCourtesy" Title="Title" Width="120px" />
-        <RadzenDataGridColumn TItem="Employee" Property="BirthDate" Title="Birth Date" FormatString="{0:d}" Width="160px" />
-        <RadzenDataGridColumn TItem="Employee" Property="HireDate" Title="Hire Date" FormatString="{0:d}" Width="160px" />
-        <RadzenDataGridColumn TItem="Employee" Property="Address" Title="Address" Width="200px" />
-        <RadzenDataGridColumn TItem="Employee" Property="City" Title="City" Width="160px" />
-        <RadzenDataGridColumn TItem="Employee" Property="Region" Title="Region" Width="160px" />
-        <RadzenDataGridColumn TItem="Employee" Property="PostalCode" Title="Postal Code" Width="160px" />
-        <RadzenDataGridColumn TItem="Employee" Property="Country" Title="Country" Width="160px" />
-        <RadzenDataGridColumn TItem="Employee" Property="HomePhone" Title="Home Phone" Width="160px" />
-        <RadzenDataGridColumn TItem="Employee" Property="Extension" Title="Extension" Width="160px" />
-        <RadzenDataGridColumn TItem="Employee" Property="Notes" Title="Notes" Width="300px" />*@
+      <RadzenDataGridColumn TItem="Mod" Property="Description" Title="Description">
+            <EditTemplate Context="mod">
+                <RadzenTextBox @bind-Value="mod.Description" Style="width:100%; display: block" Name="Description" />
+            </EditTemplate>
+        </RadzenDataGridColumn>
+         <RadzenDataGridColumn TItem="Mod" Property="Version" Title="Version" >
+            <EditTemplate Context="mod">
+                <RadzenTextBox @bind-Value="mod.Version" Style="width:100%; display: block" Name="Version" />
+            </EditTemplate>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn TItem="Mod" Property="Size" Title="Size">
+            <EditTemplate Context="mod">
+                <RadzenTextBox @bind-Value="mod.Size" Style="width:100%; display: block" Name="Size" />
+            </EditTemplate>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn TItem="Mod" Property="Url" Title="URL">
+            <EditTemplate Context="mod">
+                <RadzenTextBox @bind-Value="mod.Url" Style="width:100%; display: block" Name="Url" />
+                <RadzenRequiredValidator Text="Url is required" Component="Url" Popup="true" />
+            </EditTemplate>
+        </RadzenDataGridColumn>
+         <RadzenDataGridColumn TItem="Mod" Property="TargetFolder" Title="Target Folder">
+            <EditTemplate Context="mod">
+                <RadzenTextBox @bind-Value="mod.TargetFolder" Style="width:100%; display: block" Name="TargetFolder" />
+                <RadzenRequiredValidator Text="TargetFolder is required" Component="TargetFolder" Popup="true" />
+            </EditTemplate>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn TItem="Mod" Context="mod" Filterable="false" Sortable="false" TextAlign="TextAlign.Right" Width="156px">
+            <Template Context="mod">
+                <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => EditRow(mod))" @onclick:stopPropagation="true">
+                </RadzenButton>
+                <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Variant="Variant.Flat" Shade="Shade.Lighter" Size="ButtonSize.Medium" class="my-1 ms-1" Click="@(args => DeleteRow(mod))" @onclick:stopPropagation="true">
+                </RadzenButton>
+            </Template>
+            <EditTemplate Context="mod">
+                <RadzenButton Icon="check" ButtonStyle="ButtonStyle.Success" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@((args) => SaveRow(mod))">
+                </RadzenButton>
+                <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" class="my-1 ms-1" Click="@((args) => CancelEdit(mod))">
+                </RadzenButton>
+                <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Variant="Variant.Flat" Shade="Shade.Lighter" Size="ButtonSize.Medium" class="my-1 ms-1" Click="@(args => DeleteRow(mod))">
+                </RadzenButton>
+            </EditTemplate>
+        </RadzenDataGridColumn>
+        @*<RadzenDataGridColumn TItem="Mod" Property="Title" Title="Title" Editable="true" />
+        <RadzenDataGridColumn TItem="Mod" Property="Description" Title="Description" Editable="true" />
+        <RadzenDataGridColumn TItem="Mod" Property="Version" Title="Version" Editable="true" />
+        <RadzenDataGridColumn TItem="Mod" Property="Size" Title="Size" Editable="true" />
+        <RadzenDataGridColumn TItem="Mod" Property="Url" Title="URL" Editable="true" />
+        <RadzenDataGridColumn TItem="Mod" Property="TargetFolder" Title="Target Folder" Editable="true" />*@
     </Columns>
 </RadzenDataGrid>
 
 
 @code {
-    RadzenDataGrid<Mod> ModsGrid;
+    RadzenDataGrid<Mod> modsGrid;
     private bool IsLoading = false;
     private bool IsReady = false;
     private string Url = "https://drive.google.com/uc?id=1AEDTUYVP9Zj0EEeEyjKBsLyLeifNQgr4&export=download";
-    private List<Mod> ModDefinitionList= null;
+    List<Mod> Mods = null;
+    Mod modToInsert;
+    Mod modToUpdate;
+
+
 
     private ModManagerService modManagerService = new ModManagerService();
     protected override async Task OnInitializedAsync()
@@ -63,10 +88,9 @@
         await base.OnInitializedAsync();
         try
         {
-            StateHasChanged();
-            await Task.Run(() => ModDefinitionList =modManagerService.LocalDb.CopyMods());
+            await Task.Run(() => Mods = modManagerService.LocalDb.CopyMods());
             IsReady = true;
-            StateHasChanged();
+
         }
         catch (Exception ex)
         {
@@ -74,38 +98,98 @@
         }
 
     }
-    Mod modToInsert;
-    Mod modToUpdate;
+
+    async Task EditRow(Mod mod)
+    {
+        modToUpdate = mod;
+        await modsGrid.EditRow(mod);
+    }
+
     async Task InsertRow()
     {
         modToInsert = new Mod();
-        await ModsGrid.InsertRow(modToInsert);
+        await modsGrid.InsertRow(modToInsert);
     }
-    void OnCreateRow(Mod   mod)
+    async Task SaveRow(Mod mod)
     {
-        ;
+        await modsGrid.UpdateRow(mod);
+    }
+    async Task DeleteRow(Mod mod)
+    {
+        if (mod == modToInsert)
+        {
+            modToInsert = null;
+        }
+
+        if (mod == modToUpdate)
+        {
+            modToUpdate = null;
+        }
+
+        if (Mods.Contains(mod))
+        {
+            //dbContext.Remove<Order>(mod);
+
+            //dbContext.SaveChanges();
+
+            await modsGrid.Reload();
+        }
+        else
+        {
+            modsGrid.CancelEditRow(mod);
+            await modsGrid.Reload();
+        }
+    }
+
+
+    void OnUpdateRow(Mod mod)
+    {
+
+        if (mod == modToInsert)
+        {
+            modToInsert = null;
+        }
+
+        modToUpdate = null;
+
+        //dbContext.Update(order);
+
+        //dbContext.SaveChanges();
+    }
+    void OnCreateRow(Mod mod)
+    {
         //dbContext.Add(order);
 
         //dbContext.SaveChanges();
 
-        //orderToInsert = null;
+        modToInsert = null;
+        ;
     }
-    private async Task AddMod()
+    
+
+    void CancelEdit(Mod mod)
     {
-        try
+        if (mod == modToInsert)
         {
-            //IsLoading = true;
-            //IsReady = false;
-            //StateHasChanged();
-            //var localMods = modManagerService.ScanMods();
-            //ModDefinitionList = modManagerService.LocalDb.CopyMods();
-            //IsReady = true;
-            //IsLoading = false;
-            //StateHasChanged();
+            modToInsert = null;
         }
-        catch (Exception ex)
-        {
-            throw;
-        }
+
+        modToUpdate = null;
+
+        modsGrid.CancelEditRow(mod);
+
+        //var orderEntry = dbContext.Entry(order);
+        //if (orderEntry.State == EntityState.Modified)
+        //{
+        //    orderEntry.CurrentValues.SetValues(orderEntry.OriginalValues);
+        //    orderEntry.State = EntityState.Unchanged;
+        //}
     }
+    void Reset()
+    {
+        modToInsert = null;
+        modToUpdate = null;
+    }
+
+
 }
