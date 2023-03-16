@@ -11,9 +11,9 @@ namespace eoj12.DCS.Toolkit.Data
 {
     public class ModManagerService
     {
-        public  string DCSSaveGamesPath { get; set; }
-        public  string ModManagerPath { get; set; }
-        public  string ModManagerTempPath { get; set; }
+        public string DCSSaveGamesPath { get; set; }
+        public string ModManagerPath { get; set; }
+        public string ModManagerTempPath { get; set; }
         public string DbPath { get; set; }
         public LocalDb LocalDb { get; internal set; }
 
@@ -35,8 +35,8 @@ namespace eoj12.DCS.Toolkit.Data
         }
 
         public async Task DownloadFileDefinitionAsync(List<Mod> modDefinitionList, string url) {
-            var contentStream = await DownloadFileAsync(url);
-            var squadronModeDefinitionList = Mod.DeserializeObject(contentStream);
+            var webFileInfo = await DownloadFileAsync(url);
+            var squadronModeDefinitionList = Mod.DeserializeObject(webFileInfo.Stream);
             var dbModDefinitionList = LocalDb.Mods;
             LocalDb.ModDefinitionUrl = url;
             SaveLocalDb();
@@ -59,7 +59,7 @@ namespace eoj12.DCS.Toolkit.Data
                 }
             }
             modDefinitionList.OrderBy(m => m.Title).ToList();
-        } 
+        }
 
         public List<Mod> ScanMods()
         {
@@ -75,7 +75,7 @@ namespace eoj12.DCS.Toolkit.Data
 
         private void ScanModsFolder(List<Mod> localMods, string modPath)
         {
-            DirectoryInfo directoryInfo = new DirectoryInfo(DCSSaveGamesPath +modPath);
+            DirectoryInfo directoryInfo = new DirectoryInfo(DCSSaveGamesPath + modPath);
             if (directoryInfo.Exists)
             {
                 var directories = directoryInfo.GetDirectories();
@@ -113,48 +113,38 @@ namespace eoj12.DCS.Toolkit.Data
         public async void AddMod(Mod mod)
         {
 
-            var fileInfo =GetFileInfo(mod.Url);
+            var fileInfo = await GetWebFileInfoAndFixGoogleUrl(mod.Url);
             var url = "";
-            if (fileInfo != null && fileInfo.FileExtension.ToLower() == ".zip" || fileInfo.FileExtension.ToLower() == ".rar")
+            if (fileInfo != null && (fileInfo.FileExtension.ToLower() == ".zip" || fileInfo.FileExtension.ToLower() == ".rar"))
             {
                 var dbMod = new Mod(mod.Title, mod.Description, mod.Version, url, mod.TargetFolder, false)
                 {
                     Size = fileInfo.FileSize.ToString(),
                 };
             }
-            else if (fileInfo.ContentType == "text/html; charset=utf-8" && fileInfo.ResponseUri.Host == "drive.google.com")
-            {
-
-                //https://drive.google.com/file/d/1JM8nofJk0VH5U6uHxK6-vrMvtrzhlu0I/view?usp=sharing
-                var ids =mod.Url.Split('/');
-                var documentId = "";
-                if (ids.Length > 0)
-                { 
-                    documentId = ids[5].Trim();
-                    
-                }
-                //"https://drive.google.com/uc?export=download&id=1i88vAEulF-VeS8jfCnOJXqtU53LbuqVA&confirm=t&uuid=8edf8164-8e55-4859-8a52-85dd92aeb58f&at=ALgDtsxOg-eDFuyptLfy6UnwwqeT:1677165836536",
-                string newUrl = string.Format("https://drive.google.com/uc?export=download&id={0}",documentId );
-                var content = await GetWebContent(mod.Url);
-
-                string confirmTocken = "";
-                newUrl = string.Format("https://drive.google.com/uc?export=download&id={0}&confirm=t&uuid={1}",documentId,confirmTocken);
-                //var content = await GetWebContent(mod.Url);
-                ;
-            }
-            ;
-            ////LocalDb.Mods.Remove(dbMod);
+          
             //SaveLocalDb();
         }
 
-        static ModInfo GetFileInfo(string url)
+        public static async Task<WebFileInfo> GetWebFileInfoAndFixGoogleUrl (string url)
         {
-            ModInfo modInfo = null;
+            var webFileInfo = await GetWebFileInfo(url);
+            var googleUrl = await FixGoogleUrl(webFileInfo);
+            if (googleUrl != webFileInfo.ResponseUri.ToString())
+                webFileInfo = await GetWebFileInfo(googleUrl);
+            return webFileInfo;
+        }
+
+        public static async Task<WebFileInfo> GetWebFileInfo(string url)
+        {
+            //Uri retUri = null;
+            WebFileInfo modInfo = null;
             HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
             request.Method = "HEAD";
             HttpWebResponse response = (HttpWebResponse)request.GetResponse();
             string fileName = "";
             string fileExtension = "";
+            //retUri = response.ResponseUri;
             if (response.StatusCode == HttpStatusCode.OK)
             {
                 if (response.Headers["Content-Disposition"] != null)
@@ -164,15 +154,48 @@ namespace eoj12.DCS.Toolkit.Data
                     fileName = fileName.Replace("\"", "");
                     fileExtension = Path.GetExtension(fileName);
                 }
-
                 long fileSize = response.ContentLength;
                 DateTime modificationDate;
                 DateTime.TryParse(response.Headers["Last-Modified"], out modificationDate);
-                
-                modInfo = new ModInfo(fileName, fileExtension, fileSize, modificationDate,response.ContentType,response.ResponseUri);
+
+                modInfo = new WebFileInfo(fileName, fileExtension, fileSize, modificationDate, response.ContentType,new Uri(url));
             }
             response.Close();
             return modInfo;
+        }
+
+        public static async Task <string> FixGoogleUrl(WebFileInfo webFileInfo)
+        {
+
+            string returnUrl= webFileInfo.ResponseUri.ToString();
+            if (webFileInfo.ContentType == "text/html; charset=utf-8" && webFileInfo.ResponseUri.Host == "drive.google.com" && webFileInfo.ResponseUri.ToString().Contains("sharing"))
+            {
+                //BlackShark
+                //https://drive.google.com/file/d/1JBNAKVh6-Znt9k7F3q6jYjuJS9BSyvm9/view?usp=sharing
+                //"https://drive.google.com/uc?export=download&id=1JBNAKVh6-Znt9k7F3q6jYjuJS9BSyvm9&confirm=t&uuid=ac54130e-f5a8-40e4-897e-f1627f741ae6"
+                //https://drive.google.com/file/d/1JM8nofJk0VH5U6uHxK6-vrMvtrzhlu0I/view?usp=sharing
+                var ids = webFileInfo.ResponseUri.ToString().Split('/');
+                var documentId = "";
+                if (ids.Length > 0 && ids.Length >5)
+                {
+                    documentId = ids[5].Trim();
+
+                }
+                //https://drive.google.com/uc?export=download&id=1i88vAEulF-VeS8jfCnOJXqtU53LbuqVA&confirm=t&uuid=8edf8164-8e55-4859-8a52-85dd92aeb58f&at=ALgDtsxOg-eDFuyptLfy6UnwwqeT:1677165836536
+                //https://drive.google.com/uc?export=download&id=1JM8nofJk0VH5U6uHxK6-vrMvtrzhlu0I&confirm=t&uuid=3c0b267c-a29e-41c7-ad73-a08d4654b778&amp;at=ALgDtsyvo1r9TOjeIyni5JRVlrZ2:1678714147627
+                string newUrl = string.Format("https://drive.google.com/uc?export=download&id={0}", documentId);
+                var content = await GetWebContent(newUrl);
+                string confirmToken = "";
+                int intTokenStart = content.LastIndexOf("confirm=t&amp;uuid=");
+                int intTokenEnd = content.IndexOf("\" method=\"post\"");
+                if (intTokenStart != -1 && intTokenEnd != -1)
+                {
+                    confirmToken = content.Substring(intTokenStart, intTokenEnd - intTokenStart).Replace("confirm=t&amp;uuid=", "");
+                }
+                returnUrl =string.Format("https://drive.google.com/uc?export=download&id={0}&confirm=t&uuid={1}", documentId, confirmToken);
+          
+            }     
+            return returnUrl;
         }
 
         static async Task<string> GetWebContent(string url)
@@ -272,35 +295,38 @@ namespace eoj12.DCS.Toolkit.Data
         }
 
 
-        public async Task<Stream> DownloadFileAsync( string url)
+        public async Task<WebFileInfo> DownloadFileAsync( string url)
         {
+            var modInfo = await GetWebFileInfoAndFixGoogleUrl(url);// GetWebFileInfo(url);//
             HttpClient client = new HttpClient();
-            var response = await client.GetAsync(url);
+            var response = await client.GetAsync(modInfo.ResponseUri);//,HttpCompletionOption.ResponseHeadersRead);
             response.EnsureSuccessStatusCode();
-            var contentStream = await response.Content.ReadAsStreamAsync();
-            return contentStream;
+            modInfo.Stream = await response.Content.ReadAsStreamAsync();
+
+            return modInfo;
 
         }
 
-        public   List<ModEntry> ExtractFileFromStream(Stream stream, string outputPath)
+        public   List<ModEntry> ExtractFileFromStream(WebFileInfo webFileInfo, string outputPath)
         {
             List<ModEntry> entries = null ;
-            if (IsValidZipFile(stream)) {
-                entries =ExtractZipFromStream(stream,outputPath);
+            if (IsValidZipFile(webFileInfo.Stream)) {
+                entries =ExtractZipFromStream(webFileInfo.Stream, outputPath);
             }
-            else { //(RarArchive.IsRarFile(stream)){
+            else if(webFileInfo.FileExtension ==".rar") { //(RarArchive.IsRarFile(stream)){
                 Guid guid = Guid.NewGuid();
-                var fileStream =ConvertMemoryStreamToFileStream((MemoryStream)stream, @$"{ModManagerTempPath}\{guid}");
+                var fileStream =ConvertMemoryStreamToFileStream((MemoryStream)webFileInfo.Stream, @$"{ModManagerTempPath}\{guid}");
                 //entries =ExtractRarFromStream(stream, outputPath);
                 entries =ExtractRarFromFileInfo(new FileInfo(@$"{ModManagerTempPath}\{guid}"), outputPath);
             }
-            //else
-            //{
-            //    throw new Exception("File format not supported");
-            //}
+            else
+            {
+                throw new Exception("File format not supported");
+            }
             return entries;
 
         }
+
 
         public static List<ModEntry> ExtractZipFromStream(Stream stream, string outputPath)
         {
@@ -341,35 +367,6 @@ namespace eoj12.DCS.Toolkit.Data
             }
         }
   
-
-        //public static List<ModEntry> ExtractRarFromStream(Stream stream, string outputPath)
-        //{
-        //    using (var archive = RarArchive.Open(stream))
-        //    {
-        //        List<ModEntry> entries = new List<ModEntry>();
-        //        foreach (var entry in archive.Entries)
-        //        {
-        //            ModEntry modEntry = new ModEntry()
-        //            {
-        //                //Name = entry.,
-        //                //CompressedLength = entry.CompressedLength,
-        //                //FullName = entry.FullName,
-        //                //LastWriteTime = entry.LastWriteTime,
-        //                //Length = entry.Length
-        //            };
-        //            entries.Add(modEntry);
-        //            if (!entry.IsDirectory)
-        //            {
-        //                entry.WriteToDirectory(outputPath, new ExtractionOptions
-        //                {
-        //                    ExtractFullPath = true,
-        //                    Overwrite = true
-        //                });
-        //            }
-        //        }
-        //    }
-        //    return new List<ModEntry>();
-        //}
         public static List<ModEntry> ExtractRarFromFileInfo(FileInfo fileInfo, string outputPath)
         {
             List<ModEntry> entries = new List<ModEntry>();

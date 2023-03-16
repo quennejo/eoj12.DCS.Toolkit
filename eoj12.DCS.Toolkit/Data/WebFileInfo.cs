@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace eoj12.DCS.Toolkit.Data
 {
-    class ModInfo
+    public class WebFileInfo
     {
         public string FileName { get; private set; }
         public string FileExtension { get; private set; }
@@ -15,8 +15,8 @@ namespace eoj12.DCS.Toolkit.Data
         public string ContentType { get; set; }
         public Uri ResponseUri { get; set; }
 
-
-        public ModInfo(string fileName, string fileExtension, long fileSize, DateTime modificationDate, string contentType, Uri responseUri)
+        public Stream Stream  { get; set; }
+        public WebFileInfo(string fileName, string fileExtension, long fileSize, DateTime modificationDate, string contentType, Uri responseUri)
         {
             this.FileName = fileName;
             this.FileExtension = fileExtension;
@@ -25,6 +25,7 @@ namespace eoj12.DCS.Toolkit.Data
             ModificationDate = modificationDate;
             ContentType = contentType;
             ResponseUri = responseUri;  
+            
         }
     }
 

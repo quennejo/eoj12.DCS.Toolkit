@@ -225,12 +225,12 @@
             StateHasChanged();
             modDefinition.IsDownloading = true;
             var url = modDefinition.Url.ToString();
-            var contentStream = await modManagerService.DownloadFileAsync(url);
+            var webFileInfo = await modManagerService.DownloadFileAsync(url);
             modDefinition.IsDownloading = false;
             modDefinition.IsExtracting = true;
             StateHasChanged();
             modManagerService.DeleteMod(modDefinition);
-            modDefinition.ModEntries = modManagerService.ExtractFileFromStream(contentStream, @$"{modManagerService.DCSSaveGamesPath}\{modDefinition.TargetFolder}");
+            modDefinition.ModEntries = modManagerService.ExtractFileFromStream(webFileInfo, @$"{modManagerService.DCSSaveGamesPath}\{modDefinition.TargetFolder}");
             modDefinition.IsDownloaded = true;
             modDefinition.IsPreviousVersion = false;
             modManagerService.LocalDb.Mods.Add(modDefinition);
