@@ -1,11 +1,11 @@
-﻿@page "/Modsmanager"
+﻿@page "/SquadronCreator"
 @using System.Net;
 @using System.Net.Http
 @using System.IO
 @using System.Threading.Tasks
 @using eoj12.DCS.Toolkit.Data;
-<h1>DCS World Mod Manager</h1>
-<ModsDataGrid Mods="Mods" ShowScanMode="true" ShowLocalModeButton="true"></ModsDataGrid>
+<h1>Mod definition Creator</h1>
+<ModsDataGrid Mods="Mods" ShowScanMode="true" ShowIsEnableButton="true"></ModsDataGrid>
 @code {
     RadzenDataGrid<Mod> modsGrid;
     private bool IsLoading = false;

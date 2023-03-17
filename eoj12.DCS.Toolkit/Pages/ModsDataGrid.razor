@@ -3,23 +3,22 @@
 @using System.IO
 @using System.Threading.Tasks
 @using eoj12.DCS.Toolkit.Data;
-
 @if (ShowLoadFileDefinition)
 {
     <div class="form-group">
         <label for="url">Enter URL:</label>
-        <input type="text" class="form-control" @bind-value="Url" />
-        <button class="btn btn-primary" @onclick="DownloadFileDefinition">Load Definition file</button>
+        <RadzenTextBox @bind-value="Url" class="w-100" />
+        <RadzenButton ButtonStyle="ButtonStyle.Primary" Icon="add_circle_outline" class="mt-2 mb-4" Text="Load Definition file" Click="@DownloadFileDefinition" />
     </div>
 }
 @if (ShowScanMode) { 
-    <RadzenButton ButtonStyle="ButtonStyle.Success" Icon="add_circle_outline" class="mt-2 mb-4" Text="Scan Mod" Click="@ScanMod" Disabled=@(modToInsert != null || modToUpdate != null) />
+    <RadzenButton ButtonStyle="ButtonStyle.Primary" Icon="add_circle_outline" class="mt-2 mb-4" Text="Scan Mod" Click="@ScanMod" Disabled=@(modToInsert != null || modToUpdate != null) />
 }
-<RadzenButton ButtonStyle="ButtonStyle.Success" Icon="add_circle_outline" class="mt-2 mb-4" Text="Add New Mod" Click="@InsertRow" Disabled=@(modToInsert != null || modToUpdate != null) />
+<RadzenButton ButtonStyle="ButtonStyle.Primary" Icon="add_circle_outline" class="mt-2 mb-4" Text="Add New Mod" Click="@InsertRow" Disabled=@(modToInsert != null || modToUpdate != null) />
 <RadzenDataGrid @ref="modsGrid" AllowAlternatingRows="false" AllowFiltering="true" AllowPaging="true" PageSize="10" AllowSorting="true" EditMode="DataGridEditMode.Single"
                 Data="@Mods" TItem="Mod" RowUpdate="@OnUpdateRow" RowCreate="@OnCreateRow" Sort="@Reset" Page="@Reset" Filter="@Reset">
     <Columns>
-        <RadzenDataGridColumn TItem="Mod" Property="Title" Title="Title">
+        <RadzenDataGridColumn TItem="Mod" Property="Title" Title="Title" Width="150px">
             <EditTemplate Context="mod">
                 <RadzenTextBox @bind-Value="mod.Title" Style="width:100%; display: block" Name="Title" />
                 <RadzenRequiredValidator Text="Title is required" Component="Title" Popup="true" />
@@ -36,37 +35,103 @@
             </EditTemplate>
         </RadzenDataGridColumn>
         <RadzenDataGridColumn TItem="Mod" Property="Size" Title="Size">
-            <EditTemplate Context="mod">
+@*            <EditTemplate Context="mod">
                 <RadzenTextBox @bind-Value="mod.Size" Style="width:100%; display: block" Name="Size" />
-            </EditTemplate>
+            </EditTemplate>*@
         </RadzenDataGridColumn>
-        <RadzenDataGridColumn TItem="Mod" Property="Url" Title="URL">
-            <EditTemplate Context="mod">
+        @if (ShowModUrl)
+        {
+            <RadzenDataGridColumn TItem="Mod" Property="Url" Title="URL">
+                <Template Context="mod">
+                    <RadzenLink Path="@mod.Url" Text="Go to url" target="_blank">
+                        <RadzenIcon Icon="link" />
+                    </RadzenLink>
+                </Template>
+                <EditTemplate Context="mod">
                 <RadzenTextBox @bind-Value="mod.Url" Style="width:100%; display: block" Name="Url" />
                 <RadzenRequiredValidator Text="Url is required" Component="Url" Popup="true" />
             </EditTemplate>
         </RadzenDataGridColumn>
-        <RadzenDataGridColumn TItem="Mod" Property="TargetFolder" Title="Target Folder">
+        }
+        @if(ShowModTagetFolder){
+        <RadzenDataGridColumn TItem="Mod" Property="TargetFolder" Title="Target Folder"  >
+                <Template Context="mod">
+                @if (mod.TargetFolder.ToLower() == Names.Folders.TECH)
+                {
+                    <RadzenIcon Icon="trolley"  IconStyle="IconStyle.Info" alt="@mod.TargetFolder"/>
+                }
+                else if (mod.TargetFolder.ToLower() == Names.Folders.AIRCRAFT)
+                {
+                    <RadzenIcon Icon="flight" IconStyle="IconStyle.Info" alt="@mod.TargetFolder" />
+                }
+                else if (mod.TargetFolder.ToLower() == Names.Folders.LIVERIES)
+                {
+                    <RadzenIcon Icon="palette" IconStyle="IconStyle.Info" alt="@mod.TargetFolder" /> 
+                }
+                </Template>
             <EditTemplate Context="mod">
-                <RadzenTextBox @bind-Value="mod.TargetFolder" Style="width:100%; display: block" Name="TargetFolder" />
-                <RadzenRequiredValidator Text="TargetFolder is required" Component="TargetFolder" Popup="true" />
+                    <RadzenDropDown @bind-Value=@mod.TargetFolder Data=@Names.Folders.FoldersList />
             </EditTemplate>
         </RadzenDataGridColumn>
-        <RadzenDataGridColumn TItem="Mod" Context="mod" Filterable="false" Sortable="false" TextAlign="TextAlign.Right" Width="156px">
+        }
+        @if (ShowIsDownloadButton){
+        <RadzenDataGridColumn TItem="Mod" Context="mod" Filterable="false" Sortable="false" TextAlign="TextAlign.Right" Width="55px">
             <Template Context="mod">
-                <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => EditRow(mod))" @onclick:stopPropagation="true"/>
-                @if (ShowLocalModeButton)
-                {
-                    <RadzenButton Icon="Download" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => DownloadMod(mod))" @onclick:stopPropagation="true" />
-                    <RadzenButton Icon="Update" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => UpdateMod(mod))" @onclick:stopPropagation="true" />
-                    <RadzenButton Icon="Disable" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => DisableMod(mod))" @onclick:stopPropagation="true" />
-                    <RadzenButton Icon="Enable" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => EnableMod(mod))" @onclick:stopPropagation="true" />
-                }
-                <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Variant="Variant.Flat" Shade="Shade.Lighter" Size="ButtonSize.Medium" class="my-1 ms-1" Click="@(args => DeleteRow(mod))" @onclick:stopPropagation="true"/>
+  
+                    @if (mod.IsDownloaded & mod.IsPreviousVersion == false)
+                    {
+                        <RadzenButton Icon="done" ButtonStyle="ButtonStyle.Success" Variant="Variant.Flat" Size="ButtonSize.Medium" />
+                    }
+                    else if (mod.IsDownloading)
+                    {
+                        <RadzenButton Icon="downloading" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat" Size="ButtonSize.Medium" />
+                    }
+                    else if (mod.IsPreviousVersion)
+                    {
+                        <RadzenButton Icon="update" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => UpdateMod(mod))" @onclick:stopPropagation="true" />
+                    }
+                    else
+                    {
+                        <RadzenButton Icon="download" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => DownloadMod(mod))" @onclick:stopPropagation="true" />
+                    }                        
+            </Template>
+        </RadzenDataGridColumn>
+        }
+        @if (ShowIsEnableButton)
+        {
+            <RadzenDataGridColumn TItem="Mod" Context="mod" Filterable="false" Sortable="false" TextAlign="TextAlign.Right" Width="55px">
+                <Template Context="mod">
+                    @if (mod.IsDisable == false && (mod.IsDownloaded || mod.IsPreviousVersion))
+                    {
+                        <RadzenButton Icon="toggle_on" ButtonStyle="ButtonStyle.Success" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => DisableMod(mod))" @onclick:stopPropagation="true" />
+                    }
+                    else if (mod.IsDisable && (mod.IsDownloaded || mod.IsPreviousVersion))
+                    {
+                        <RadzenButton Icon="toggle_off" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => EnableMod(mod))" @onclick:stopPropagation="true" />
+                    }           
+            </Template>
+        </RadzenDataGridColumn>
+        }
+        <RadzenDataGridColumn TItem="Mod" Context="mod" Filterable="false" Sortable="false" TextAlign="TextAlign.Right" Width="55px">
+            <Template Context="mod">
+                <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => EditRow(mod))" @onclick:stopPropagation="true" />
             </Template>
             <EditTemplate Context="mod">
-                <RadzenButton Icon="check" ButtonStyle="ButtonStyle.Success" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@((args) => SaveRow(mod))">
+                <RadzenButton Icon="save" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@((args) => SaveRow(mod))">
                 </RadzenButton>
+            </EditTemplate>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn TItem="Mod" Context="mod" Filterable="false" Sortable="false" TextAlign="TextAlign.Right" Width="55px">
+            <Template Context="mod">
+                @if (ShowIsEnableButton)
+                {
+                    @if (mod.IsDownloaded || mod.IsPreviousVersion)
+                    {
+                        <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Variant="Variant.Flat" Shade="Shade.Lighter" Size="ButtonSize.Medium" class="my-1 ms-1" Click="@(args => DeleteRow(mod))" @onclick:stopPropagation="true" />
+                    }
+                }
+            </Template>
+            <EditTemplate Context="mod">
                 <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" class="my-1 ms-1" Click="@((args) => CancelEdit(mod))">
                 </RadzenButton>
                 <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Variant="Variant.Flat" Shade="Shade.Lighter" Size="ButtonSize.Medium" class="my-1 ms-1" Click="@(args => DeleteRow(mod))">
@@ -91,7 +156,9 @@
     [Parameter]
     public bool ShowModTagetFolder { get; set; } = true;
     [Parameter]
-    public bool ShowLocalModeButton { get; set; } = true;
+    public bool ShowIsDownloadButton { get; set; } = true;
+    [Parameter]
+    public bool ShowIsEnableButton { get; set; } = true;
     RadzenDataGrid<Mod> modsGrid;
     Mod modToInsert;
     Mod modToUpdate;
@@ -99,7 +166,7 @@
     private bool IsLoading = false;
     private bool IsReady = false;
     private string Url = "https://drive.google.com/uc?id=1AEDTUYVP9Zj0EEeEyjKBsLyLeifNQgr4&export=download";
-    private List<Mod> ModDefinitionList = null;
+    //private List<Mod> ModDefinitionList = null;
 
 
     private ModManagerService modManagerService = new ModManagerService();
@@ -109,7 +176,7 @@
         try
         {
             //await Task.Run(() => Mods = modManagerService.LocalDb.CopyMods());
-           
+
 
         }
         catch (Exception ex)
@@ -141,7 +208,10 @@
         modToUpdate = mod;
         await modsGrid.EditRow(mod);
     }
-
+    /// <summary>
+    /// On Add button click
+    /// </summary>
+    /// <returns></returns>
     async Task InsertRow()
     {
         modToInsert = new Mod();
@@ -165,9 +235,12 @@
 
         if (Mods.Contains(mod))
         {
-            //dbContext.Remove<Order>(mod);
-
-            //dbContext.SaveChanges();
+            IsReady = false;
+            IsLoading = true;
+            modManagerService.DeleteMod(mod);
+            Mods.Remove(mod);
+            IsReady = true;
+            IsLoading = false;
 
             await modsGrid.Reload();
         }
@@ -177,6 +250,25 @@
             await modsGrid.Reload();
         }
     }
+    //private async Task DeleteMod(Mod modDefinition)
+    //{
+    //    try
+    //    {
+    //        StateHasChanged();
+    //        IsReady = false;
+    //        IsLoading = true;
+    //        modManagerService.DeleteMod(modDefinition);
+    //        Mods.Remove(modDefinition);
+    //        IsReady = true;
+    //        IsLoading = false;
+    //        StateHasChanged();
+    //    }
+    //    catch (Exception ex)
+    //    {
+
+    //        throw;
+    //    }
+    //}
     private async Task DownloadFileDefinition()
     {
         try
@@ -184,14 +276,15 @@
             IsReady = false;
             IsLoading = true;
             StateHasChanged();
-            await modManagerService.DownloadFileDefinitionAsync(ModDefinitionList, Url);
+            Mods=  await modManagerService.DownloadFileDefinitionAsync( Url);
             IsLoading = false;
             IsReady = true;
             StateHasChanged();
         }
         catch (Exception ex)
         {
-            throw new Exception("");
+            throw new Exception("nmnmn");
+
         }
     }
     private async Task DownloadMod(Mod modDefinition)
@@ -245,25 +338,7 @@
         }
     }
 
-    private async Task DeleteMod(Mod modDefinition)
-    {
-        try
-        {
-            StateHasChanged();
-            IsReady = false;
-            IsLoading = true;
-            modManagerService.DeleteMod(modDefinition);
-            ModDefinitionList.Remove(modDefinition);
-            IsReady = true;
-            IsLoading = false;
-            StateHasChanged();
-        }
-        catch (Exception ex)
-        {
 
-            throw;
-        }
-    }
 
     private async Task DisableMod(Mod modDefinition)
     {
@@ -319,7 +394,7 @@
         //dbContext.Add(order);
 
         //dbContext.SaveChanges();
-
+        modManagerService.AddMod(mod);
         modToInsert = null;
         ;
     }

@@ -184,7 +184,7 @@
             IsReady = false;
             IsLoading = true;
             StateHasChanged();
-            await modManagerService.DownloadFileDefinitionAsync(ModDefinitionList,Url);     
+            await modManagerService.DownloadFileDefinitionAsync(Url);     
             IsLoading = false;
             IsReady = true;
             StateHasChanged();

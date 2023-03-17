@@ -5,12 +5,9 @@
 @using System.Threading.Tasks
 @using eoj12.DCS.Toolkit.Data;
 <h1>DCS World Mod Manager</h1>
-<ModsDataGrid Mods="Mods" ShowScanMode="true" ShowLocalModeButton="true"></ModsDataGrid>
+<ModsDataGrid Mods="Mods" ShowScanMode="true" ShowIsDownloadButton=false ShowIsEnableButton="true" ShowModTagetFolder=true ShowModUrl=false></ModsDataGrid>
 @code {
     RadzenDataGrid<Mod> modsGrid;
-    private bool IsLoading = false;
-    private bool IsReady = false;
-    private string Url = "https://drive.google.com/uc?id=1AEDTUYVP9Zj0EEeEyjKBsLyLeifNQgr4&export=download";
     List<Mod> Mods = null;
 
     private ModManagerService modManagerService = new ModManagerService();
@@ -20,8 +17,6 @@
         try
         {
             await Task.Run(() => Mods = modManagerService.LocalDb.CopyMods());
-            IsReady = true;
-
         }
         catch (Exception ex)
         {

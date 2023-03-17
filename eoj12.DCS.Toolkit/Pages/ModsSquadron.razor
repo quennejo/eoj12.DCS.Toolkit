@@ -1,15 +1,15 @@
-﻿@page "/Modsmanager"
+﻿@page "/ModsSquadron"
 @using System.Net;
 @using System.Net.Http
 @using System.IO
 @using System.Threading.Tasks
 @using eoj12.DCS.Toolkit.Data;
-<h1>DCS World Mod Manager</h1>
-<ModsDataGrid Mods="Mods" ShowScanMode="true" ShowLocalModeButton="true"></ModsDataGrid>
+<h1>My Squadrons Mods</h1>
+
+
+<ModsDataGrid Mods="Mods" ShowScanMode="false" ShowIsEnableButton="true" ShowLoadFileDefinition=true></ModsDataGrid>
 @code {
     RadzenDataGrid<Mod> modsGrid;
-    private bool IsLoading = false;
-    private bool IsReady = false;
     private string Url = "https://drive.google.com/uc?id=1AEDTUYVP9Zj0EEeEyjKBsLyLeifNQgr4&export=download";
     List<Mod> Mods = null;
 
@@ -19,8 +19,7 @@
         await base.OnInitializedAsync();
         try
         {
-            await Task.Run(() => Mods = modManagerService.LocalDb.CopyMods());
-            IsReady = true;
+            await Task.Run(() => Mods = new List<Mod>());
 
         }
         catch (Exception ex)

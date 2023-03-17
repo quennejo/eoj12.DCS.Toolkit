@@ -34,31 +34,43 @@ namespace eoj12.DCS.Toolkit.Data
             LocalDb = LocalDb.DeserializeObject(DbPath);
         }
 
-        public async Task DownloadFileDefinitionAsync(List<Mod> modDefinitionList, string url) {
+        public async Task<List<Mod>> DownloadFileDefinitionAsync( string url) {
+            List<Mod> mods = new List<Mod>();   
             var webFileInfo = await DownloadFileAsync(url);
             var squadronModeDefinitionList = Mod.DeserializeObject(webFileInfo.Stream);
-            var dbModDefinitionList = LocalDb.Mods;
+            var dbModDefinitionList = LocalDb.CopyMods();
             LocalDb.ModDefinitionUrl = url;
+    
             SaveLocalDb();
 
             foreach (var squadronMod in squadronModeDefinitionList)
             {
-                var modDefinition = modDefinitionList.FirstOrDefault(m => squadronMod.Title == m.Title);
-                if (modDefinition == null)
+                var dbMod = dbModDefinitionList.FirstOrDefault(m => squadronMod.Title == m.Title);
+                if (dbMod == null)
                 {
-                    modDefinitionList.Add(squadronMod);
+                    mods.Add(squadronMod);
                 }
-                else if (squadronMod.Version.ToLower() != modDefinition.Version.ToLower())
+                else if (squadronMod.Version.ToLower() != dbMod.Version.ToLower())
                 {
-                    modDefinition.IsPreviousVersion = true;
-                    modDefinition.IsDownloaded = true;
-                    modDefinition.Url = squadronMod.Url;
-                    modDefinition.Version = squadronMod.Version;
-                    modDefinition.Size = squadronMod.Size;
+                    var mod = new Mod()
+                    {
+                        Title = squadronMod.Title,
+                        Url = squadronMod.Url,
+                        Version = squadronMod.Version,
+                        Size = squadronMod.Size,
+                        Description= squadronMod.Description,
+                        TargetFolder = squadronMod.TargetFolder,
+                        IsDisable = dbMod.IsDisable,
+                        IsPreviousVersion = true,
+                        IsDownloaded = true,
+                    };
+                    mods.Add(mod);
 
                 }
+                else { mods.Add(dbMod);}
             }
-            modDefinitionList.OrderBy(m => m.Title).ToList();
+            mods.OrderBy(m => m.Title).ToList();
+            return mods;
         }
 
         public List<Mod> ScanMods()
@@ -81,7 +93,7 @@ namespace eoj12.DCS.Toolkit.Data
                 var directories = directoryInfo.GetDirectories();
                 foreach (var modDirectory in directories)
                 {
-                    var localMod = new Mod(modDirectory.Name, "", "", "", @$"{modPath}\" + modDirectory.Name, true);
+                    var localMod = new Mod(modDirectory.Name, "", "", "", modPath, true);
                     var subDirectories = modDirectory.GetDirectories("*.*", SearchOption.AllDirectories);
                     ModEntry modEntry = new ModEntry(modDirectory.Name, modDirectory.FullName, true);
                     localMod.ModEntries.Add(modEntry);
@@ -119,11 +131,13 @@ namespace eoj12.DCS.Toolkit.Data
             {
                 var dbMod = new Mod(mod.Title, mod.Description, mod.Version, url, mod.TargetFolder, false)
                 {
-                    Size = fileInfo.FileSize.ToString(),
+                    Size = ((fileInfo.FileSize /1024 /1024)).ToString() + " MB",
                 };
+                LocalDb.Mods.Add(dbMod);
+                SaveLocalDb();
             }
-          
-            //SaveLocalDb();
+           
+            
         }
 
         public static async Task<WebFileInfo> GetWebFileInfoAndFixGoogleUrl (string url)
