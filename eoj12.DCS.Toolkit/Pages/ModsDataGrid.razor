@@ -3,18 +3,35 @@
 @using System.IO
 @using System.Threading.Tasks
 @using eoj12.DCS.Toolkit.Data;
+@inject DialogService DialogService
+<RadzenDialog />
+@*<RadzenButton Text="Show confirm dialog" Click=@(args => DialogService.Confirm("Are you sure?", "MyTitle", new ConfirmOptions() { OkButtonText = "Yes", CancelButtonText = "No" })) />*@
+
 @if (ShowLoadFileDefinition)
 {
     <div class="form-group">
-        <label for="url">Enter URL:</label>
-        <RadzenTextBox @bind-value="Url" class="w-100" />
-        <RadzenButton ButtonStyle="ButtonStyle.Primary" Icon="add_circle_outline" class="mt-2 mb-4" Text="Load Definition file" Click="@DownloadFileDefinition" />
+        <div class="row">
+            <div class="col">
+                <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H3">Enter mod definition Url :</RadzenText>
+                @*<RadzenTextBox @bind-value="Url" class="w-100" />*@
+                <input type="text" class="form-control" @bind-value="Url" />
+                <RadzenButton ButtonStyle="ButtonStyle.Primary" Icon="add_circle_outline" class="mt-2 mb-4" Text="Load Definition file" Click="@DownloadFileDefinition" />
+            </div>
+            <div class="col">
+                
+                <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H3">Select local file :</RadzenText>
+                <InputFile class="form-control" OnChange="@DownloadFileDefinitionFromFile" accept=".json" />
+            </div>
+        </div>
     </div>
 }
-@if (ShowScanMode) { 
+@if (ShowScanMod) { 
     <RadzenButton ButtonStyle="ButtonStyle.Primary" Icon="add_circle_outline" class="mt-2 mb-4" Text="Scan Mod" Click="@ScanMod" Disabled=@(modToInsert != null || modToUpdate != null) />
 }
 <RadzenButton ButtonStyle="ButtonStyle.Primary" Icon="add_circle_outline" class="mt-2 mb-4" Text="Add New Mod" Click="@InsertRow" Disabled=@(modToInsert != null || modToUpdate != null) />
+@if(ShowLoadFileDefinition){
+<RadzenButton ButtonStyle="ButtonStyle.Primary" Icon="add_circle_outline" class="mt-2 mb-4" Text="Export Definition file" Click="@ExportMods"  />
+}
 <RadzenDataGrid @ref="modsGrid" AllowAlternatingRows="false" AllowFiltering="true" AllowPaging="true" PageSize="10" AllowSorting="true" EditMode="DataGridEditMode.Single"
                 Data="@Mods" TItem="Mod" RowUpdate="@OnUpdateRow" RowCreate="@OnCreateRow" Sort="@Reset" Page="@Reset" Filter="@Reset">
     <Columns>
@@ -56,17 +73,19 @@
         @if(ShowModTagetFolder){
         <RadzenDataGridColumn TItem="Mod" Property="TargetFolder" Title="Target Folder"  >
                 <Template Context="mod">
-                @if (mod.TargetFolder.ToLower() == Names.Folders.TECH)
-                {
-                    <RadzenIcon Icon="trolley"  IconStyle="IconStyle.Info" alt="@mod.TargetFolder"/>
-                }
-                else if (mod.TargetFolder.ToLower() == Names.Folders.AIRCRAFT)
-                {
-                    <RadzenIcon Icon="flight" IconStyle="IconStyle.Info" alt="@mod.TargetFolder" />
-                }
-                else if (mod.TargetFolder.ToLower() == Names.Folders.LIVERIES)
-                {
-                    <RadzenIcon Icon="palette" IconStyle="IconStyle.Info" alt="@mod.TargetFolder" /> 
+                @if(mod.TargetFolder != null){
+                    if (mod.TargetFolder.ToLower() == Names.Folders.TECH)
+                    {
+                        <RadzenIcon Icon="trolley"  IconStyle="IconStyle.Info" alt="@mod.TargetFolder"/>
+                    }
+                    else if (mod!.TargetFolder.ToLower() == Names.Folders.AIRCRAFT)
+                    {
+                        <RadzenIcon Icon="flight" IconStyle="IconStyle.Info" alt="@mod.TargetFolder" />
+                    }
+                    else if (mod!.TargetFolder.ToLower() == Names.Folders.LIVERIES)
+                    {
+                        <RadzenIcon Icon="palette" IconStyle="IconStyle.Info" alt="@mod.TargetFolder" /> 
+                    }
                 }
                 </Template>
             <EditTemplate Context="mod">
@@ -125,7 +144,7 @@
             <Template Context="mod">
                 @if (ShowIsEnableButton)
                 {
-                    @if (mod.IsDownloaded || mod.IsPreviousVersion)
+                @if (mod.IsDownloaded || mod.IsPreviousVersion || DefinitionMode)
                     {
                         <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Variant="Variant.Flat" Shade="Shade.Lighter" Size="ButtonSize.Medium" class="my-1 ms-1" Click="@(args => DeleteRow(mod))" @onclick:stopPropagation="true" />
                     }
@@ -144,11 +163,13 @@
 
 @code {
     [Parameter]
+    public bool DefinitionMode { get; set; } 
+    [Parameter]
     public List<Mod> Mods { get; set; }
     [Parameter]
-    public bool ShowScanMode { get; set; }
+    public bool ShowScanMod { get; set; }
     [Parameter]
-    public bool ShowAddMode { get; set; }
+    public bool ShowAddMod { get; set; }
     [Parameter]
     public bool ShowLoadFileDefinition { get; set; }
     [Parameter]
@@ -176,15 +197,13 @@
         try
         {
             //await Task.Run(() => Mods = modManagerService.LocalDb.CopyMods());
-
-
         }
         catch (Exception ex)
         {
             throw;
         }
-
     }
+
     private async Task ScanMod()
     {
         try
@@ -203,6 +222,19 @@
             throw;
         }
     }
+    private async Task ExportMods()
+    {
+        try
+        {
+            var fileName =modManagerService.ExportMods(Mods);
+            DialogService.Alert($"Your file has been export to :<br/>{fileName}", "Export Mod Definition", new AlertOptions() { OkButtonText = "Ok" });
+        }
+        catch (Exception ex)
+        {
+            throw;
+        }
+    }
+
     async Task EditRow(Mod mod)
     {
         modToUpdate = mod;
@@ -237,7 +269,8 @@
         {
             IsReady = false;
             IsLoading = true;
-            modManagerService.DeleteMod(mod);
+            if(!DefinitionMode)
+                modManagerService.DeleteMod(mod);
             Mods.Remove(mod);
             IsReady = true;
             IsLoading = false;
@@ -250,25 +283,20 @@
             await modsGrid.Reload();
         }
     }
-    //private async Task DeleteMod(Mod modDefinition)
-    //{
-    //    try
-    //    {
-    //        StateHasChanged();
-    //        IsReady = false;
-    //        IsLoading = true;
-    //        modManagerService.DeleteMod(modDefinition);
-    //        Mods.Remove(modDefinition);
-    //        IsReady = true;
-    //        IsLoading = false;
-    //        StateHasChanged();
-    //    }
-    //    catch (Exception ex)
-    //    {
 
-    //        throw;
-    //    }
-    //}
+    private async void DownloadFileDefinitionFromFile(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            var reader = await new StreamReader(e.File.OpenReadStream()).ReadToEndAsync();
+            Mods = await modManagerService.DownloadFileDefinitionAsync(e.File.OpenReadStream()); ;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            throw new Exception("File not supported. Please select .json file");   
+        }
+    }
     private async Task DownloadFileDefinition()
     {
         try
@@ -374,27 +402,20 @@
         }
     }
 
-
     void OnUpdateRow(Mod mod)
     {
-
         if (mod == modToInsert)
         {
             modToInsert = null;
         }
-
         modToUpdate = null;
-
-        //dbContext.Update(order);
-
-        //dbContext.SaveChanges();
+        if (!DefinitionMode)
+            modManagerService.UpdateMod(mod);
     }
     void OnCreateRow(Mod mod)
     {
-        //dbContext.Add(order);
-
-        //dbContext.SaveChanges();
-        modManagerService.AddMod(mod);
+        if (!DefinitionMode)
+            modManagerService.AddMod(mod);
         modToInsert = null;
         ;
     }

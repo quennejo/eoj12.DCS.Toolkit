@@ -77,37 +77,36 @@ namespace eoj12.DCS.Toolkit.Data
             }
         }
 
-        public static List<Mod> DeserializeObject(Stream stream)
+        public static async Task<List<Mod>> DeserializeObject(Stream stream)
         {
             using (StreamReader reader = new StreamReader(stream))
             {
-                string jsonString = reader.ReadToEnd();
+                string jsonString = await  reader.ReadToEndAsync();
                 return JsonSerializer.Deserialize<List<Mod>>(jsonString);
             }
         }
 
-        public Mod CopyTo( Mod mod)
+        public Mod CopyTo( Mod mod, bool includeEntries = true)
         {
-            Mod modCopy = GetModCopy(mod);
+            Mod modCopy = GetModCopy(mod, includeEntries);
             return modCopy;
         }
 
-        private static Mod GetModCopy(Mod mod)
+        private static Mod GetModCopy(Mod mod, bool includeEntries)
         {
             return new Mod()
             {
                 Description = mod.Description,
                 IsDisable = mod.IsDisable,
                 IsDownloaded = mod.IsDownloaded,
-                //IsDownloading = mod.IsDownloading,
-                //IsExtracting = mod.IsExtracting,
                 IsPreviousVersion = mod.IsPreviousVersion,
-                ModEntries = mod.ModEntries,
+                ModEntries = includeEntries? mod.ModEntries:null,
                 Size = mod.Size,
                 TargetFolder = mod.TargetFolder,
                 Title = mod.Title,
                 Url = mod.Url,
                 Version = mod.Version,
+                
             };
         }
     }

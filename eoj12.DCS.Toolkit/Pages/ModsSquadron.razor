@@ -6,8 +6,7 @@
 @using eoj12.DCS.Toolkit.Data;
 <h1>My Squadrons Mods</h1>
 
-
-<ModsDataGrid Mods="Mods" ShowScanMode="false" ShowIsEnableButton="true" ShowLoadFileDefinition=true></ModsDataGrid>
+<ModsDataGrid Mods="Mods"  DefinitionMode="true" ShowScanMod="false" ShowIsEnableButton="false" ShowLoadFileDefinition=true></ModsDataGrid>
 @code {
     RadzenDataGrid<Mod> modsGrid;
     private string Url = "https://drive.google.com/uc?id=1AEDTUYVP9Zj0EEeEyjKBsLyLeifNQgr4&export=download";

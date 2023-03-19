@@ -34,13 +34,20 @@ namespace eoj12.DCS.Toolkit.Data
             LocalDb = LocalDb.DeserializeObject(DbPath);
         }
 
-        public async Task<List<Mod>> DownloadFileDefinitionAsync( string url) {
-            List<Mod> mods = new List<Mod>();   
-            var webFileInfo = await DownloadFileAsync(url);
-            var squadronModeDefinitionList = Mod.DeserializeObject(webFileInfo.Stream);
-            var dbModDefinitionList = LocalDb.CopyMods();
+        public async Task<List<Mod>> DownloadFileDefinitionAsync( string url)
+        {
+      
             LocalDb.ModDefinitionUrl = url;
-    
+            var webFileInfo = await DownloadFileAsync(url);
+            return await DownloadFileDefinitionAsync(webFileInfo.Stream);
+        }
+
+        public async Task<List<Mod>> DownloadFileDefinitionAsync( Stream stream)
+        {
+            List<Mod> mods = new List<Mod>();
+            var squadronModeDefinitionList = await Mod.DeserializeObject(stream);
+            var dbModDefinitionList = LocalDb.CopyMods();
+         
             SaveLocalDb();
 
             foreach (var squadronMod in squadronModeDefinitionList)
@@ -58,7 +65,7 @@ namespace eoj12.DCS.Toolkit.Data
                         Url = squadronMod.Url,
                         Version = squadronMod.Version,
                         Size = squadronMod.Size,
-                        Description= squadronMod.Description,
+                        Description = squadronMod.Description,
                         TargetFolder = squadronMod.TargetFolder,
                         IsDisable = dbMod.IsDisable,
                         IsPreviousVersion = true,
@@ -67,7 +74,12 @@ namespace eoj12.DCS.Toolkit.Data
                     mods.Add(mod);
 
                 }
-                else { mods.Add(dbMod);}
+                else {
+                    var mod = dbMod.CopyTo(dbMod);
+                    mod.Url= squadronMod.Url;
+                    mod.TargetFolder= squadronMod.TargetFolder;
+                    mod.Description = squadronMod.Description;
+                    mods.Add(mod); }
             }
             mods.OrderBy(m => m.Title).ToList();
             return mods;
@@ -83,6 +95,13 @@ namespace eoj12.DCS.Toolkit.Data
             ScanModsFolder(localMods, Folders.LIVERIES);
 
             return localMods;
+        }
+        public string ExportMods(List<Mod> mods) {
+
+            string timeStamp = DateTime.Now.ToString("yyyyMMddhhmmss");
+            string fileName = string.Format(@"{0}\Mods_{1}.json", ModManagerPath, timeStamp);
+            Mod.SerializeObject(mods.Select(m => m.CopyTo(m,false)).ToList(), fileName) ; 
+            return fileName ;        
         }
 
         private void ScanModsFolder(List<Mod> localMods, string modPath)
@@ -124,20 +143,37 @@ namespace eoj12.DCS.Toolkit.Data
 
         public async void AddMod(Mod mod)
         {
-
             var fileInfo = await GetWebFileInfoAndFixGoogleUrl(mod.Url);
-            var url = "";
             if (fileInfo != null && (fileInfo.FileExtension.ToLower() == ".zip" || fileInfo.FileExtension.ToLower() == ".rar"))
             {
-                var dbMod = new Mod(mod.Title, mod.Description, mod.Version, url, mod.TargetFolder, false)
+                var dbMod = new Mod(mod.Title, mod.Description, mod.Version, fileInfo.ResponseUri.ToString(), mod.TargetFolder, false)
                 {
                     Size = ((fileInfo.FileSize /1024 /1024)).ToString() + " MB",
                 };
                 LocalDb.Mods.Add(dbMod);
                 SaveLocalDb();
+            }                   
+        }
+        public async void UpdateMod(Mod mod)
+        {
+            var dbMod = LocalDb.Mods.FirstOrDefault(m => m.Title == mod.Title);
+            if (dbMod != null)
+            {         
+                dbMod.Title = mod.Title;
+                dbMod.Description = mod.Description;
+                dbMod.Version = mod.Version;
+                dbMod.TargetFolder = mod.TargetFolder;
+                if (!string.IsNullOrEmpty(dbMod.Url))
+                {
+                    var fileInfo = await GetWebFileInfoAndFixGoogleUrl(mod.Url);
+                    if (fileInfo != null && (fileInfo.FileExtension.ToLower() == ".zip" || fileInfo.FileExtension.ToLower() == ".rar"))
+                    {
+                        dbMod.Size = ((fileInfo.FileSize / 1024 / 1024)).ToString() + " MB";
+                        dbMod.Url = fileInfo.ResponseUri.ToString();
+                    }
+                }
+                SaveLocalDb();
             }
-           
-            
         }
 
         public static async Task<WebFileInfo> GetWebFileInfoAndFixGoogleUrl (string url)

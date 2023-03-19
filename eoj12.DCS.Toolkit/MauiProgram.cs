@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using eoj12.DCS.Toolkit.Data;
+using Radzen;
 
 namespace eoj12.DCS.Toolkit;
 
@@ -23,7 +24,9 @@ public static class MauiProgram
 #endif
 
 		builder.Services.AddSingleton<WeatherForecastService>();
+		builder.Services.AddScoped<DialogService>();
+        //builder.Services.AddSingleton<DialogService>();
 
-		return builder.Build();
+        return builder.Build();
 	}
 }
