@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace eoj12.DCS.Toolkit.Data
+namespace eoj12.DCS.Toolkit.Models
 {
     public class WebFileInfo
     {
@@ -15,17 +15,17 @@ namespace eoj12.DCS.Toolkit.Data
         public string ContentType { get; set; }
         public Uri ResponseUri { get; set; }
 
-        public Stream Stream  { get; set; }
+        public Stream Stream { get; set; }
         public WebFileInfo(string fileName, string fileExtension, long fileSize, DateTime modificationDate, string contentType, Uri responseUri)
         {
-            this.FileName = fileName;
-            this.FileExtension = fileExtension;
-            this.FileSize = fileSize;
-            this.ModificationDate = modificationDate;
+            FileName = fileName;
+            FileExtension = fileExtension;
+            FileSize = fileSize;
+            ModificationDate = modificationDate;
             ModificationDate = modificationDate;
             ContentType = contentType;
-            ResponseUri = responseUri;  
-            
+            ResponseUri = responseUri;
+
         }
     }
 

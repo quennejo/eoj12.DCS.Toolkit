@@ -6,23 +6,40 @@ using SharpCompress.Archives;
 using eoj12.DCS.Toolkit.Names;
 using System.Net;
 using System;
+using eoj12.DCS.Toolkit.Models;
+using Microsoft.Maui.Media;
+using eoj12.DCS.Toolkit.Pages;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace eoj12.DCS.Toolkit.Data
 {
     public class ModManagerService
     {
-        public string DCSSaveGamesPath { get; set; }
+        //public string DCSSaveGamesPath { get; set; }
         public string ModManagerPath { get; set; }
         public string ModManagerTempPath { get; set; }
         public string DbPath { get; set; }
-        public LocalDb LocalDb { get; internal set; }
+
+        private LocalDb _localDb;
+        public LocalDb LocalDb
+        {
+            get
+            {
+                if (_localDb == null)
+                {
+                    _localDb = new LocalDb();      
+                }
+                return _localDb;
+            }
+            set { _localDb = value; }
+        }
+           
 
         public ModManagerService()
         {
-            DCSSaveGamesPath = @$"C:\Users\joequ\Saved Games\DCS.openbetaModManager";
-            ModManagerPath = @$"{DCSSaveGamesPath}\{Names.General.MOD_MANAGER_PATH}";
+            ModManagerPath = @$"{LocalDb.Settings.DCSSaveGamesPath}\{Names.General.MOD_MANAGER_PATH}";
             ModManagerTempPath = @$"{ModManagerPath}\Temp";
-            DbPath = @$"{ModManagerPath}\localDb.json";
+            DbPath = @$"{FileSystem.Current.AppDataDirectory}\\localDb.json";
             // Check if directory exists
             if (!Directory.Exists(ModManagerPath))
             {
@@ -32,6 +49,37 @@ namespace eoj12.DCS.Toolkit.Data
                     Directory.CreateDirectory(ModManagerTempPath);
             }
             LocalDb = LocalDb.DeserializeObject(DbPath);
+            ;
+        }
+
+        public async Task<Settings> GetSettings() {
+            return LocalDb.Settings;
+        }
+        public async void SaveSettings( Settings settings)
+        {
+            if (Directory.Exists(settings.DCSSaveGamesPath))
+            {
+                LocalDb.Settings.DCSSaveGamesPath = settings.DCSSaveGamesPath;
+                ModManagerPath = @$"{LocalDb.Settings.DCSSaveGamesPath}\{Names.General.MOD_MANAGER_PATH}";
+                ModManagerTempPath = @$"{ModManagerPath}\Temp";
+                if (!Directory.Exists(ModManagerPath))
+                {
+                    // Create the directory
+                    Directory.CreateDirectory(ModManagerPath);
+                    if (!Directory.Exists(ModManagerTempPath))
+                        Directory.CreateDirectory(ModManagerTempPath);
+                }
+
+                //DbPath = @$"{ModManagerPath}\localDb.json";
+                SaveLocalDb();
+            }else
+            {
+                throw new Exception("DCS Save game path does not exist!");
+            }
+        }
+        public async void DeleteLocalDb() {
+            File.Delete(DbPath);
+            LocalDb = null;
         }
 
         public async Task<List<Mod>> DownloadFileDefinitionAsync( string url)
@@ -106,7 +154,7 @@ namespace eoj12.DCS.Toolkit.Data
 
         private void ScanModsFolder(List<Mod> localMods, string modPath)
         {
-            DirectoryInfo directoryInfo = new DirectoryInfo(DCSSaveGamesPath + modPath);
+            DirectoryInfo directoryInfo = new DirectoryInfo(LocalDb.Settings.DCSSaveGamesPath + modPath);
             if (directoryInfo.Exists)
             {
                 var directories = directoryInfo.GetDirectories();
@@ -282,7 +330,7 @@ namespace eoj12.DCS.Toolkit.Data
             var directoryEntries = dbMod.ModEntries.Where(e => e.IsDirectory).OrderBy(e => e.Path).ToList();
             foreach (var modEntry in directoryEntries)
             {
-                var tempPath = modEntry.Path.Replace(DCSSaveGamesPath, ModManagerTempPath);
+                var tempPath = modEntry.Path.Replace(LocalDb.Settings.DCSSaveGamesPath, ModManagerTempPath);
                 DirectoryInfo directoryInfo = new DirectoryInfo(tempPath);
                 if (!directoryInfo.Exists)
                 {
@@ -292,7 +340,7 @@ namespace eoj12.DCS.Toolkit.Data
             }
             foreach (var modEntry in dbMod.ModEntries.Where(e => e.IsDirectory == false))
             {
-                var tempPath = modEntry.Path.Replace(DCSSaveGamesPath, ModManagerTempPath);
+                var tempPath = modEntry.Path.Replace(LocalDb.Settings.DCSSaveGamesPath, ModManagerTempPath);
                 File.Move(modEntry.Path, tempPath,true);
             }
             directoryEntries = dbMod.ModEntries.Where(e => e.IsDirectory).OrderByDescending(e => e.Path).ToList();
@@ -325,13 +373,13 @@ namespace eoj12.DCS.Toolkit.Data
             }
             foreach (var modEntry in dbMod.ModEntries.Where(e => e.IsDirectory == false))
             {
-                var tempPath = modEntry.Path.Replace(DCSSaveGamesPath, ModManagerTempPath);
+                var tempPath = modEntry.Path.Replace(LocalDb.Settings.DCSSaveGamesPath, ModManagerTempPath);
                 File.Move(tempPath,modEntry.Path, true);
             }
             directoryEntries = dbMod.ModEntries.Where(e => e.IsDirectory).OrderByDescending(e => e.Path).ToList();
             foreach (var modEntry in directoryEntries)
             {
-                var tempPath = modEntry.Path.Replace(DCSSaveGamesPath, ModManagerTempPath);
+                var tempPath = modEntry.Path.Replace(LocalDb.Settings.DCSSaveGamesPath, ModManagerTempPath);
                 DirectoryInfo directoryInfo = new DirectoryInfo(tempPath);
                 if (directoryInfo.Exists && directoryInfo.GetFiles().Length == 0)
                 {
@@ -352,7 +400,6 @@ namespace eoj12.DCS.Toolkit.Data
             var response = await client.GetAsync(modInfo.ResponseUri);//,HttpCompletionOption.ResponseHeadersRead);
             response.EnsureSuccessStatusCode();
             modInfo.Stream = await response.Content.ReadAsStreamAsync();
-
             return modInfo;
 
         }

@@ -1,0 +1,57 @@
+﻿@page "/AppSettings"
+@using CommunityToolkit.Maui.Storage;
+@using eoj12.DCS.Toolkit.Data;
+
+
+
+
+<div class="form-group">
+
+    <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H3">DCS Save Games Folder  :</RadzenText>
+    <RadzenText TextStyle="TextStyle.Body2">ex : C:\Users\[USER]\Saved Games\DCS.openbeta</RadzenText>
+    <RadzenTextBox Disabled="true" class="w-100" @bind-Value=folderPath />
+    <RadzenButton ButtonStyle="ButtonStyle.Primary" Icon="add_circle_outline" class="mt-2 mb-4" Text="Select Folder" Click="@OnSelectFolderClick" />
+    <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H3">Application Folder  :</RadzenText>
+    <RadzenTextBox Disabled="true" class="w-100" @bind-Value=appDataPath />
+    <RadzenButton ButtonStyle="ButtonStyle.Primary" Icon="add_circle_outline" class="mt-2 mb-4" Text="Clear App Settings" Click="@OnDeleteDB" />
+</div>
+@code {
+    string folderPath = "";
+    string appDataPath ="";
+    ModManagerService modManagerService = new ModManagerService();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        try
+        {
+            var settings =await modManagerService.GetSettings();
+            folderPath = settings.DCSSaveGamesPath;
+            appDataPath = FileSystem.Current.AppDataDirectory;
+        }
+        catch (Exception ex)
+        {
+            throw;
+        }
+
+    }
+    private async void OnSelectFolderClick()
+    {
+        FolderPickerResult folder = await FolderPicker.PickAsync(default);
+        if (folder.IsSuccessful)
+        {
+            folderPath = folder.Folder.Path;
+            modManagerService.SaveSettings(new Models.Settings() { DCSSaveGamesPath = folderPath });
+            StateHasChanged();
+        }
+
+    }
+    private async void OnDeleteDB()
+    {
+        modManagerService.DeleteLocalDb();
+        var settings = await modManagerService.GetSettings();
+        folderPath = settings.DCSSaveGamesPath;
+        StateHasChanged();
+
+    }
+}   

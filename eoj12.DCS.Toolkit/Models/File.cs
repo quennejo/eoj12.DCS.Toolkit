@@ -4,9 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace eoj12.DCS.Toolkit.Data
+namespace eoj12.DCS.Toolkit.Models
 {
-    class HugeMemoryStream : System.IO.Stream
+    class HugeMemoryStream : Stream
     {
         #region Fields
 
@@ -29,7 +29,7 @@ namespace eoj12.DCS.Toolkit.Data
         {
             int pageCount = (int)(length / PAGE_SIZE) + 1;
 
-            if ((length % PAGE_SIZE) == 0)
+            if (length % PAGE_SIZE == 0)
                 pageCount--;
 
             return pageCount;

@@ -1,10 +1,11 @@
 ﻿@page "/ModsSquadron"
+@using eoj12.DCS.Toolkit.Models;
 @using System.Net;
 @using System.Net.Http
 @using System.IO
 @using System.Threading.Tasks
 @using eoj12.DCS.Toolkit.Data;
-<h1>My Squadrons Mods</h1>
+
 
 <ModsDataGrid Mods="Mods"  DefinitionMode="true" ShowScanMod="false" ShowIsEnableButton="false" ShowLoadFileDefinition=true></ModsDataGrid>
 @code {

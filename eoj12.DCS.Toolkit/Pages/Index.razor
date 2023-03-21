@@ -1,303 +1,31 @@
 ﻿@page "/"
+@using eoj12.DCS.Toolkit.Data;
+@using eoj12.DCS.Toolkit.Models;
 @using System.Net;
 @using System.Net.Http
 @using System.IO
 @using System.Threading.Tasks
-@using eoj12.DCS.Toolkit.Data;
-@*@inject ModManagerService ModManagerService;*@
 
-<h1>DCS World Mod Manager</h1>
-
-<div><button class="btn btn-primary" @onclick="ScanMod">Scan my Mods</button></div>
-<div class="form-group">
-    <label for="url">Enter URL:</label>
-    <input type="text" class="form-control" @bind-value="Url" />
-    <button class="btn btn-primary" @onclick="DownloadFileDefinition">Load Definition file</button>
-</div>
-<div></div>
-
-<button class="btn btn-success" @onclick="NewMod">New Mod Definition</button>
-<div class="form-group">
-    <label for="url">Title*</label>
-    <input type="text" class="form-control" @bind-value="TempMod.Title" />
-    <label for="url">Description</label>
-    <input type="text" class="form-control" @bind-value="TempMod.Description" />
-    <label for="url">Version</label>
-    <input type="text" class="form-control" @bind-value="TempMod.Version" />
-    <label for="url">Size</label>
-    <input type="text" class="form-control" @bind-value="TempMod.Size" />
-    <label for="url">Url</label>
-    <input type="text" class="form-control" @bind-value="TempMod.Url" />
-    <label for="url">Target Folder</label>
- 
-    <InputSelect class="form-control" @bind-Value="TempMod.TargetFolder">
-        <option value=@Names.Folders.AIRCRAFT>Aircraft</option>
-        <option value=@Names.Folders.LIVERIES>Liveries</option>
-        <option value=@Names.Folders.TECH>Tech</option>
-    </InputSelect>
-    <button class="btn btn-success" @onclick="@(e=>CreateMod(TempMod))">Create Mod Definition</button>
-</div>
-@if (IsLoading)
-{
-    <p><em>Downloading file...</em></p>
-}
-@if(IsReady && ModDefinitionList!=null)
-{
-
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Title</th>
-                <th>Description</th>
-                <th>Version</th>
-                <th>Size</th>
-                <th></th>
-                <th></th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var modDefinition in ModDefinitionList)
-            {
-                <tr>
-                    <td>@modDefinition.Title</td>
-                    <td>@modDefinition.Description</td>
-                    <td>@modDefinition.Version</td>
-                    <td>@modDefinition.Size</td>
-                    <td>
-                        @if (modDefinition.IsDownloaded & modDefinition.IsPreviousVersion ==false)
-                        {
-                            <span>Up to date</span>
-                        }else if (modDefinition.IsDownloading)
-                        {
-                            <span>Downloading...</span>
-                            
-                        }
-                        else if (modDefinition.IsExtracting)
-                        {
-                            <span>Extracting...</span>
-                        }
-                        else if (modDefinition.IsPreviousVersion)
-                        {
-                            <button class="btn btn-success btn-sm" @onclick="@(e=>UpdateMod(modDefinition))">Update</button>
-                        }
-                        else
-                        {
-                            <button class="btn btn-primary btn-sm" @onclick="@(e=>DownloadMod(modDefinition))">Download</button>
-                        }
-                    </td>
-                    <td>
-                        @if (modDefinition.IsDisable==false &&(modDefinition.IsDownloaded || modDefinition.IsPreviousVersion))
-                        {
-                            <button class="btn btn-secondary btn-sm" @onclick="@(e=>DisableMod(modDefinition))">Disable</button>
-                        }
-                        else if (modDefinition.IsDisable  && (modDefinition.IsDownloaded || modDefinition.IsPreviousVersion))
-                        {
-                            <button class="btn btn-secondary btn-sm" @onclick="@(e=>EnableMod(modDefinition))">Enable</button>
-                        }
-                    </td>
-                    <td>
-                        @if(modDefinition.IsDownloaded || modDefinition.IsPreviousVersion){
-                            <button class="btn btn-danger btn-sm" @onclick="@(e=>DeleteMod(modDefinition))">Delete</button>
-                            
-                        }
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
-}
-
+<ModsDataGrid Mods="Mods"  ShowScanMod="true" ShowIsDownloadButton=false ShowIsEnableButton="true" ShowModTagetFolder=true ShowModUrl=false></ModsDataGrid>
 @code {
-    private bool IsNew = false;
-    private bool IsLoading = false;
-    private bool IsReady = false;
-    private string Url = "https://drive.google.com/uc?id=1AEDTUYVP9Zj0EEeEyjKBsLyLeifNQgr4&export=download";
-    private List<Mod> ModDefinitionList= null;
-    private Mod TempMod = new Mod();
+    RadzenDataGrid<Mod> modsGrid;
+    List<Mod> Mods = null;
 
     private ModManagerService modManagerService = new ModManagerService();
-
     protected override async Task OnInitializedAsync()
     {
+        await base.OnInitializedAsync();
         try
         {
-            StateHasChanged();
-            await Task.Run(() => ModDefinitionList =modManagerService.LocalDb.CopyMods());
-            IsReady = true;
-            StateHasChanged();
+            await Task.Run(() => Mods = modManagerService.LocalDb.CopyMods());
         }
         catch (Exception ex)
         {
             throw;
         }
-    }
 
-    private async Task NewMod()
-    {
-        try
-        {
-            IsNew = true;
-        }
-        catch (Exception ex)
-        {
-            throw;
-        }
     }
-    private async Task CreateMod(Mod modDefinition)
-    {
-        try
-        {
-            IsNew = true;
-            modManagerService.AddMod(modDefinition);
-        }
-        catch (Exception ex)
-        {
-            throw;
-        }
-    }
-    private async Task ScanMod()
-    {
-        try
-        {
-            IsLoading = true;
-            IsReady = false;
-            StateHasChanged();
-            var localMods = modManagerService.ScanMods();
-            ModDefinitionList = modManagerService.LocalDb.CopyMods();
-            IsReady = true;
-            IsLoading = false;
-            StateHasChanged();
-        }
-        catch (Exception ex)
-        {
-            throw;
-        }
-    }
-
-    private async Task DownloadFileDefinition()
-    {
-        try
-        {
-            IsReady = false;
-            IsLoading = true;
-            StateHasChanged();
-            await modManagerService.DownloadFileDefinitionAsync(Url);     
-            IsLoading = false;
-            IsReady = true;
-            StateHasChanged();
-        }
-        catch(Exception ex)
-        {
-            throw new Exception("");
-        }
-    }
-    private async Task DownloadMod(Mod modDefinition)
-    {
-        try
-        {
-            StateHasChanged();
-            modDefinition.IsDownloading = true;
-            var url = modDefinition.Url.ToString();
-            var contentStream = await modManagerService.DownloadFileAsync(url);
-            modDefinition.IsDownloading = false;
-            modDefinition.IsExtracting = true;
-            StateHasChanged();
-            modDefinition.ModEntries = modManagerService.ExtractFileFromStream(contentStream, @$"{modManagerService.DCSSaveGamesPath}\{modDefinition.TargetFolder}");
-            modDefinition.IsDownloaded = true;
-            modManagerService.LocalDb.Mods.Add(modDefinition);
-            modDefinition.IsExtracting = false;
-            modManagerService.SaveLocalDb();
-            StateHasChanged();
-        }
-        catch (Exception ex)
-        {
-
-            throw;
-        }
-    }
-    private async Task UpdateMod(Mod modDefinition)
-    {
-        try
-        {
-            StateHasChanged();
-            modDefinition.IsDownloading = true;
-            var url = modDefinition.Url.ToString();
-            var webFileInfo = await modManagerService.DownloadFileAsync(url);
-            modDefinition.IsDownloading = false;
-            modDefinition.IsExtracting = true;
-            StateHasChanged();
-            modManagerService.DeleteMod(modDefinition);
-            modDefinition.ModEntries = modManagerService.ExtractFileFromStream(webFileInfo, @$"{modManagerService.DCSSaveGamesPath}\{modDefinition.TargetFolder}");
-            modDefinition.IsDownloaded = true;
-            modDefinition.IsPreviousVersion = false;
-            modManagerService.LocalDb.Mods.Add(modDefinition);
-            modDefinition.IsExtracting = false;
-            modManagerService.SaveLocalDb();
-            StateHasChanged();
-        }
-        catch (Exception ex)
-        {
-
-            throw;
-        }
-    }
-
-    private async Task DeleteMod(Mod modDefinition)
-    {
-        try
-        {
-            StateHasChanged();
-            IsReady = false;
-            IsLoading = true;
-            modManagerService.DeleteMod(modDefinition);
-            ModDefinitionList.Remove(modDefinition);
-            IsReady = true;
-            IsLoading = false;
-            StateHasChanged();
-        }
-        catch (Exception ex)
-        {
-
-            throw;
-        }
-    }
-
-    private async Task DisableMod(Mod modDefinition)
-    {
-        try
-        {
-            StateHasChanged();
-            modManagerService.DisableMod(modDefinition);
-            modDefinition.IsDisable = true;
-            modDefinition.IsDownloaded = true;
-            StateHasChanged();
-        }
-        catch (Exception ex)
-        {
-
-            throw;
-        }
-    }
-
-    private async Task EnableMod(Mod modDefinition)
-    {
-        try
-        {
-            StateHasChanged();
-            modManagerService.EnableMod(modDefinition);
-            modDefinition.IsDisable = false;
-            modDefinition.IsDownloaded = true;
-            StateHasChanged();
-        }
-        catch (Exception ex)
-        {
-
-            throw;
-        }
-    }
+   
 
 
 }
-
-

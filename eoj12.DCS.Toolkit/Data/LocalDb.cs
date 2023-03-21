@@ -6,12 +6,15 @@ using System.IO;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Runtime.CompilerServices;
+using eoj12.DCS.Toolkit.Models;
 
 namespace eoj12.DCS.Toolkit.Data
 {
     public class LocalDb
     {
         public string ModDefinitionUrl { get; set; }
+        public Settings Settings { get; set; }
+
         List<Mod> _mods;
         public List<Mod> Mods 
         {
@@ -26,7 +29,13 @@ namespace eoj12.DCS.Toolkit.Data
             set { _mods = value; }
         }
 
-        
+
+        public LocalDb()
+        {
+            if(Settings == null) 
+                Settings = new Settings();
+            
+        }
 
 
         // Serialization method for a list of objects
@@ -40,7 +49,8 @@ namespace eoj12.DCS.Toolkit.Data
             try
             {
                 string jsonString = File.ReadAllText(filePath);
-                return JsonSerializer.Deserialize<LocalDb>(jsonString);
+                var db= JsonSerializer.Deserialize<LocalDb>(jsonString);
+                return db;
             }
             catch (Exception)
             {

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 
-namespace eoj12.DCS.Toolkit.Data
+namespace eoj12.DCS.Toolkit.Models
 {
     public class Mod
     {
@@ -17,14 +17,15 @@ namespace eoj12.DCS.Toolkit.Data
         public bool IsDownloaded { get; set; }
         public bool IsDownloading { get; set; }
         public bool IsExtracting { get; set; }
-        public bool IsPreviousVersion{ get; set; }
-        public bool IsDisable{ get; set; }
+        public bool IsPreviousVersion { get; set; }
+        public bool IsDisable { get; set; }
 
         private List<ModEntry> _modEntries;
         public List<ModEntry> ModEntries
         {
-            get { 
-                _modEntries??= new List<ModEntry>();
+            get
+            {
+                _modEntries ??= new List<ModEntry>();
                 return _modEntries;
             }
             set { _modEntries = value; }
@@ -32,16 +33,16 @@ namespace eoj12.DCS.Toolkit.Data
 
         public Mod()
         {
-            
+
         }
-        public Mod(string title, string description, string version, string url, string targetFolder,bool isDownloaded)
+        public Mod(string title, string description, string version, string url, string targetFolder, bool isDownloaded)
         {
             Title = title;
             Description = description;
             Version = version;
             Url = url;
             TargetFolder = targetFolder;
-            IsDownloaded = isDownloaded;  
+            IsDownloaded = isDownloaded;
         }
 
 
@@ -81,12 +82,12 @@ namespace eoj12.DCS.Toolkit.Data
         {
             using (StreamReader reader = new StreamReader(stream))
             {
-                string jsonString = await  reader.ReadToEndAsync();
+                string jsonString = await reader.ReadToEndAsync();
                 return JsonSerializer.Deserialize<List<Mod>>(jsonString);
             }
         }
 
-        public Mod CopyTo( Mod mod, bool includeEntries = true)
+        public Mod CopyTo(Mod mod, bool includeEntries = true)
         {
             Mod modCopy = GetModCopy(mod, includeEntries);
             return modCopy;
@@ -100,13 +101,13 @@ namespace eoj12.DCS.Toolkit.Data
                 IsDisable = mod.IsDisable,
                 IsDownloaded = mod.IsDownloaded,
                 IsPreviousVersion = mod.IsPreviousVersion,
-                ModEntries = includeEntries? mod.ModEntries:null,
+                ModEntries = includeEntries ? mod.ModEntries : null,
                 Size = mod.Size,
                 TargetFolder = mod.TargetFolder,
                 Title = mod.Title,
                 Url = mod.Url,
                 Version = mod.Version,
-                
+
             };
         }
     }

@@ -1,6 +1,8 @@
 ﻿using Microsoft.Extensions.Logging;
+using CommunityToolkit.Maui;
 using eoj12.DCS.Toolkit.Data;
 using Radzen;
+using CommunityToolkit.Maui;
 
 namespace eoj12.DCS.Toolkit;
 
@@ -11,7 +13,8 @@ public static class MauiProgram
 		var builder = MauiApp.CreateBuilder();
 		builder
 			.UseMauiApp<App>()
-			.ConfigureFonts(fonts =>
+            .UseMauiCommunityToolkit()
+            .ConfigureFonts(fonts =>
 			{
 				fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
 			});
@@ -23,8 +26,8 @@ public static class MauiProgram
 		builder.Logging.AddDebug();
 #endif
 
-		builder.Services.AddSingleton<WeatherForecastService>();
 		builder.Services.AddScoped<DialogService>();
+
         //builder.Services.AddSingleton<DialogService>();
 
         return builder.Build();
