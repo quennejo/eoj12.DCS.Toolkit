@@ -9,5 +9,6 @@ namespace eoj12.DCS.Toolkit.Models
     public class Settings
     {
         public string DCSSaveGamesPath { get; set; }
+        public string SquadronUrl{ get; set; }
     }
 }

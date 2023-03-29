@@ -33,20 +33,20 @@
 
     <ItemGroup>
         <!-- App Icon -->
-        <MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#512BD4" />
 
         <!-- Splash Screen -->
         <MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#512BD4" BaseSize="128,128" />
 
         <!-- Images -->
         <MauiImage Include="Resources\Images\*" />
-        <MauiImage Update="Resources\Images\dotnet_bot.svg" BaseSize="168,208" />
+        <MauiImage Update="Resources\Images\dotnet_bot.svg" BaseSize="256,256" Resize="false" />
 
         <!-- Custom Fonts -->
         <MauiFont Include="Resources\Fonts\*" />
 
         <!-- Raw Assets (also remove the "Resources\Raw" prefix) -->
         <MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
+		<MauiIcon Include="Resources\AppIcon\icon.svg"/> 
     </ItemGroup>
 
     <ItemGroup>
@@ -54,6 +54,12 @@
     </ItemGroup>
 
     <ItemGroup>
+      <None Remove="Resources\AppIcon\appicon.old.svg" />
+      <None Remove="Resources\AppIcon\appicon.svg" />
+      <None Remove="Resources\AppIcon\appiconfg.svg.old" />
+      <None Remove="Resources\AppIcon\favicon.ico" />
+      <None Remove="Resources\AppIcon\favicon.ico.old" />
+      <None Remove="Resources\AppIcon\icon.svg" />
       <None Remove="Shared\MainLayout - Copy.razor.css" />
     </ItemGroup>
 

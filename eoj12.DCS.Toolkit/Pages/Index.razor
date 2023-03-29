@@ -6,10 +6,10 @@
 @using System.IO
 @using System.Threading.Tasks
 
-<ModsDataGrid Mods="Mods"  ShowScanMod="true" ShowIsDownloadButton=false ShowIsEnableButton="true" ShowModTagetFolder=true ShowModUrl=false></ModsDataGrid>
+<ModsDataGrid Mods="mods"  ShowScanMod="true" ShowIsDownloadButton=false ShowIsEnableButton="true" ShowModTagetFolder=true ShowModUrl=false></ModsDataGrid>
 @code {
     RadzenDataGrid<Mod> modsGrid;
-    List<Mod> Mods = null;
+    List<Mod> mods = null;
 
     private ModManagerService modManagerService = new ModManagerService();
     protected override async Task OnInitializedAsync()
@@ -17,7 +17,7 @@
         await base.OnInitializedAsync();
         try
         {
-            await Task.Run(() => Mods = modManagerService.LocalDb.CopyMods());
+            mods = await modManagerService.GetMods();
         }
         catch (Exception ex)
         {

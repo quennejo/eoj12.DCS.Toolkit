@@ -15,7 +15,6 @@ namespace eoj12.DCS.Toolkit.Data
 {
     public class ModManagerService
     {
-        //public string DCSSaveGamesPath { get; set; }
         public string ModManagerPath { get; set; }
         public string ModManagerTempPath { get; set; }
         public string DbPath { get; set; }
@@ -37,21 +36,34 @@ namespace eoj12.DCS.Toolkit.Data
 
         public ModManagerService()
         {
-            ModManagerPath = @$"{LocalDb.Settings.DCSSaveGamesPath}\{Names.General.MOD_MANAGER_PATH}";
-            ModManagerTempPath = @$"{ModManagerPath}\Temp";
             DbPath = @$"{FileSystem.Current.AppDataDirectory}\\localDb.json";
-            // Check if directory exists
-            if (!Directory.Exists(ModManagerPath))
-            {
-                // Create the directory
-                Directory.CreateDirectory(ModManagerPath);
-                if (!Directory.Exists(ModManagerTempPath))
-                    Directory.CreateDirectory(ModManagerTempPath);
-            }
             LocalDb = LocalDb.DeserializeObject(DbPath);
-            ;
+            if (LocalDb.Settings.DCSSaveGamesPath != null)
+            {
+                ModManagerPath = @$"{LocalDb.Settings.DCSSaveGamesPath}\{Names.General.MOD_MANAGER_PATH}";
+                ModManagerTempPath = @$"{LocalDb.Settings.DCSSaveGamesPath}\{Names.General.MOD_MANAGER_TEMP_PATH}";
+                EnsureDirectory(ModManagerTempPath);
+
+               
+            }
         }
 
+        private void EnsureDirectory(string path) {
+            // Check if directory exists
+            if (!Directory.Exists(path))
+            {
+                Directory.CreateDirectory(path);
+            }
+
+        }
+
+        public async Task<List<Mod>> GetMods() {
+
+            var mods =LocalDb.CopyMods();     
+            return mods.OrderBy(m=>m.Title).ToList();
+
+             
+        }
         public async Task<Settings> GetSettings() {
             return LocalDb.Settings;
         }
@@ -61,16 +73,8 @@ namespace eoj12.DCS.Toolkit.Data
             {
                 LocalDb.Settings.DCSSaveGamesPath = settings.DCSSaveGamesPath;
                 ModManagerPath = @$"{LocalDb.Settings.DCSSaveGamesPath}\{Names.General.MOD_MANAGER_PATH}";
-                ModManagerTempPath = @$"{ModManagerPath}\Temp";
-                if (!Directory.Exists(ModManagerPath))
-                {
-                    // Create the directory
-                    Directory.CreateDirectory(ModManagerPath);
-                    if (!Directory.Exists(ModManagerTempPath))
-                        Directory.CreateDirectory(ModManagerTempPath);
-                }
-
-                //DbPath = @$"{ModManagerPath}\localDb.json";
+                ModManagerTempPath = @$"{LocalDb.Settings.DCSSaveGamesPath}\{Names.General.MOD_MANAGER_TEMP_PATH}";
+                EnsureDirectory(ModManagerTempPath);
                 SaveLocalDb();
             }else
             {
@@ -100,12 +104,12 @@ namespace eoj12.DCS.Toolkit.Data
 
             foreach (var squadronMod in squadronModeDefinitionList)
             {
-                var dbMod = dbModDefinitionList.FirstOrDefault(m => squadronMod.Title == m.Title);
+                var dbMod = dbModDefinitionList.FirstOrDefault(m => squadronMod.Title.ToLower() == m.Title.ToLower());
                 if (dbMod == null)
                 {
                     mods.Add(squadronMod);
                 }
-                else if (squadronMod.Version.ToLower() != dbMod.Version.ToLower())
+                else if (squadronMod?.Version.ToLower() != dbMod.Version.ToLower())
                 {
                     var mod = new Mod()
                     {
@@ -142,7 +146,7 @@ namespace eoj12.DCS.Toolkit.Data
             ScanModsFolder(localMods, Folders.TECH);
             ScanModsFolder(localMods, Folders.LIVERIES);
 
-            return localMods;
+            return localMods.OrderBy(m=>m.Title).ToList();
         }
         public string ExportMods(List<Mod> mods) {
 
@@ -173,38 +177,70 @@ namespace eoj12.DCS.Toolkit.Data
                     var files = modDirectory.GetFiles("*.*", SearchOption.AllDirectories);
                     foreach (FileInfo f in files)
                     {
-                        modEntry = new ModEntry(f.Name, f.FullName, false);
+                        modEntry = new ModEntry(f.Name, f.FullName, false,f.Length);
                         localMod.ModEntries.Add(modEntry);
                     }
+                    var size = localMod.ModEntries.Sum(modEntry => modEntry.Length);
+                    localMod.Size = GetSize(size);  
                     localMods.Add(localMod);
                 }
             }
             foreach (var mod in localMods)
             {
-                if (!LocalDb.Mods.Any(m => m.Title == mod.Title))
+                if (!LocalDb.Mods.Any(m => m.Title.ToLower() == mod.Title.ToLower()))
                     LocalDb.Mods.Add(mod);
 
             }
             SaveLocalDb();
         }
 
+        private string GetSize(long size) {
+            string sizeString = "";
+            if (size > 0)
+            {
+               float mb = ((size / 1024) / 1024);
+               sizeString = Math.Round(mb,2) + " MB";
+            }
 
-        public async void AddMod(Mod mod)
+            return sizeString;
+
+        }
+
+
+        public async Task<Mod> AddMod(Mod mod,bool udpate)
         {
+            var dbMod = LocalDb.Mods.FirstOrDefault(m => m.Title.ToLower() == mod.Title.ToLower());
             var fileInfo = await GetWebFileInfoAndFixGoogleUrl(mod.Url);
             if (fileInfo != null && (fileInfo.FileExtension.ToLower() == ".zip" || fileInfo.FileExtension.ToLower() == ".rar"))
             {
-                var dbMod = new Mod(mod.Title, mod.Description, mod.Version, fileInfo.ResponseUri.ToString(), mod.TargetFolder, false)
+                if (dbMod == null)
                 {
-                    Size = ((fileInfo.FileSize /1024 /1024)).ToString() + " MB",
-                };
-                LocalDb.Mods.Add(dbMod);
-                SaveLocalDb();
-            }                   
+                    dbMod = new Mod(mod.Title, mod.Description, mod.Version, fileInfo.ResponseUri.ToString(), mod.TargetFolder, false)
+                    {
+                        Size = GetSize(fileInfo.FileSize),
+                    };
+                }
+                else {
+                    dbMod.Description = mod.Description;
+                    dbMod.Version = mod.Version;
+                    dbMod.TargetFolder = mod.TargetFolder;
+                    dbMod.IsDownloaded = true;
+                    dbMod.IsPreviousVersion= dbMod.Version.ToLower() == mod.Version.ToLower()?false:true;
+                    dbMod.Url = mod.Url; 
+                        
+                }
+                if (udpate)
+                {
+                    LocalDb.Mods.Add(dbMod);
+                    SaveLocalDb();
+                }
+                return mod.CopyTo(dbMod);
+            }    
+            else { return null; };
         }
         public async void UpdateMod(Mod mod)
         {
-            var dbMod = LocalDb.Mods.FirstOrDefault(m => m.Title == mod.Title);
+            var dbMod = LocalDb.Mods.FirstOrDefault(m => m.Title.ToLower() == mod.Title.ToLower());
             if (dbMod != null)
             {         
                 dbMod.Title = mod.Title;
@@ -266,12 +302,8 @@ namespace eoj12.DCS.Toolkit.Data
         {
 
             string returnUrl= webFileInfo.ResponseUri.ToString();
-            if (webFileInfo.ContentType == "text/html; charset=utf-8" && webFileInfo.ResponseUri.Host == "drive.google.com" && webFileInfo.ResponseUri.ToString().Contains("sharing"))
+            if (webFileInfo.ContentType == "text/html; charset=utf-8" && webFileInfo.ResponseUri.Host == "drive.google.com")// && webFileInfo.ResponseUri.ToString().Contains("sharing"))
             {
-                //BlackShark
-                //https://drive.google.com/file/d/1JBNAKVh6-Znt9k7F3q6jYjuJS9BSyvm9/view?usp=sharing
-                //"https://drive.google.com/uc?export=download&id=1JBNAKVh6-Znt9k7F3q6jYjuJS9BSyvm9&confirm=t&uuid=ac54130e-f5a8-40e4-897e-f1627f741ae6"
-                //https://drive.google.com/file/d/1JM8nofJk0VH5U6uHxK6-vrMvtrzhlu0I/view?usp=sharing
                 var ids = webFileInfo.ResponseUri.ToString().Split('/');
                 var documentId = "";
                 if (ids.Length > 0 && ids.Length >5)
@@ -279,8 +311,6 @@ namespace eoj12.DCS.Toolkit.Data
                     documentId = ids[5].Trim();
 
                 }
-                //https://drive.google.com/uc?export=download&id=1i88vAEulF-VeS8jfCnOJXqtU53LbuqVA&confirm=t&uuid=8edf8164-8e55-4859-8a52-85dd92aeb58f&at=ALgDtsxOg-eDFuyptLfy6UnwwqeT:1677165836536
-                //https://drive.google.com/uc?export=download&id=1JM8nofJk0VH5U6uHxK6-vrMvtrzhlu0I&confirm=t&uuid=3c0b267c-a29e-41c7-ad73-a08d4654b778&amp;at=ALgDtsyvo1r9TOjeIyni5JRVlrZ2:1678714147627
                 string newUrl = string.Format("https://drive.google.com/uc?export=download&id={0}", documentId);
                 var content = await GetWebContent(newUrl);
                 string confirmToken = "";
@@ -290,8 +320,7 @@ namespace eoj12.DCS.Toolkit.Data
                 {
                     confirmToken = content.Substring(intTokenStart, intTokenEnd - intTokenStart).Replace("confirm=t&amp;uuid=", "");
                 }
-                returnUrl =string.Format("https://drive.google.com/uc?export=download&id={0}&confirm=t&uuid={1}", documentId, confirmToken);
-          
+                returnUrl =string.Format("https://drive.google.com/uc?export=download&id={0}&confirm=t&uuid={1}", documentId, confirmToken);       
             }     
             return returnUrl;
         }
@@ -346,7 +375,6 @@ namespace eoj12.DCS.Toolkit.Data
             directoryEntries = dbMod.ModEntries.Where(e => e.IsDirectory).OrderByDescending(e => e.Path).ToList();
             foreach (var modEntry in directoryEntries)
             {
-                //var tempPath = modEntry.Path.Replace(DCSSaveGamesPath, ModManagerTempPath);
                 DirectoryInfo directoryInfo = new DirectoryInfo(modEntry.Path);
                 if (directoryInfo.Exists && directoryInfo.GetFiles().Length == 0)
                 {
@@ -413,7 +441,6 @@ namespace eoj12.DCS.Toolkit.Data
             else if(webFileInfo.FileExtension ==".rar") { //(RarArchive.IsRarFile(stream)){
                 Guid guid = Guid.NewGuid();
                 var fileStream =ConvertMemoryStreamToFileStream((MemoryStream)webFileInfo.Stream, @$"{ModManagerTempPath}\{guid}");
-                //entries =ExtractRarFromStream(stream, outputPath);
                 entries =ExtractRarFromFileInfo(new FileInfo(@$"{ModManagerTempPath}\{guid}"), outputPath);
             }
             else

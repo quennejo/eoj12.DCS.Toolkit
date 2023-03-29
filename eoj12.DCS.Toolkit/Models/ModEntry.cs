@@ -18,6 +18,15 @@ namespace eoj12.DCS.Toolkit.Models
             Name = name;
             Path = path;
             IsDirectory = isDirectory;
+
+        }
+        public ModEntry(string name, string path, bool isDirectory, long length)
+        {
+            Name = name;
+            Path = path;
+            IsDirectory = isDirectory;
+            Length = length;
+            
         }
 
         public string Name { get; set; }

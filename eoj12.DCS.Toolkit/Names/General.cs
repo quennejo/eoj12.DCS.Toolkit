@@ -8,7 +8,8 @@ namespace eoj12.DCS.Toolkit.Names
 {
     public static class General
     {
-        public const string MOD_MANAGER_PATH = "eoj12.ModManager";
+        public const string MOD_MANAGER_PATH = @"Scripts\eoj12.ModManager";
+        public const string MOD_MANAGER_TEMP_PATH = @"Scripts\eoj12.ModManager\Temp";
         public const string DB_Name = "localDb.json";
     }
     public static class Folders

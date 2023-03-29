@@ -40,7 +40,7 @@
 <RadzenDataGrid @ref="modsGrid" AllowAlternatingRows="false" AllowFiltering="true" AllowPaging="true" PageSize="10" AllowSorting="true" EditMode="DataGridEditMode.Single"
                 Data="@Mods" TItem="Mod" RowUpdate="@OnUpdateRow" RowCreate="@OnCreateRow" Sort="@Reset" Page="@Reset" Filter="@Reset">
     <Columns>
-        <RadzenDataGridColumn TItem="Mod" Property="Title" Title="Title" Width="150px">
+        <RadzenDataGridColumn TItem="Mod" Property="Title" Title="Title" Width="">
             <EditTemplate Context="mod">
                 <RadzenTextBox @bind-Value="mod.Title" Style="width:100%; display: block" Name="Title" />
                 <RadzenRequiredValidator Text="Title is required" Component="Title" Popup="true" />
@@ -96,66 +96,63 @@
         </RadzenDataGridColumn>
         }
         @if (ShowIsDownloadButton){
-        <RadzenDataGridColumn TItem="Mod" Context="mod" Filterable="false" Sortable="false" TextAlign="TextAlign.Right" Width="55px">
+        <RadzenDataGridColumn TItem="Mod" Context="mod" Filterable="false" Sortable="false" TextAlign="TextAlign.Right" Width="45px">
             <Template Context="mod">
   
                     @if (mod.IsDownloaded & mod.IsPreviousVersion == false)
                     {
-                        <RadzenButton Icon="done" ButtonStyle="ButtonStyle.Success" Variant="Variant.Flat" Size="ButtonSize.Medium" />
+                        <RadzenButton Icon="done" ButtonStyle="ButtonStyle.Success" Variant="Variant.Flat" Size="ButtonSize.Small" />
                     }
                     else if (mod.IsDownloading)
                     {
-                        <RadzenButton Icon="downloading" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat" Size="ButtonSize.Medium" />
+                        <RadzenButton Icon="downloading" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat" Size="ButtonSize.Small" />
                     }
                     else if (mod.IsPreviousVersion)
                     {
-                        <RadzenButton Icon="update" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => UpdateMod(mod))" @onclick:stopPropagation="true" />
+                        <RadzenButton Icon="update" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat" Size="ButtonSize.Small" Click="@(args => UpdateMod(mod))" @onclick:stopPropagation="true" />
                     }
                     else
                     {
-                        <RadzenButton Icon="download" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => DownloadMod(mod))" @onclick:stopPropagation="true" />
+                        <RadzenButton Icon="download" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat" Size="ButtonSize.Small" Click="@(args => DownloadMod(mod))" @onclick:stopPropagation="true" />
                     }                        
             </Template>
         </RadzenDataGridColumn>
         }
         @if (ShowIsEnableButton)
         {
-            <RadzenDataGridColumn TItem="Mod" Context="mod" Filterable="false" Sortable="false" TextAlign="TextAlign.Right" Width="55px">
+            <RadzenDataGridColumn TItem="Mod" Context="mod" Filterable="false" Sortable="false" TextAlign="TextAlign.Right" Width="45px">
                 <Template Context="mod">
                     @if (mod.IsDisable == false && (mod.IsDownloaded || mod.IsPreviousVersion))
                     {
-                        <RadzenButton Icon="toggle_on" ButtonStyle="ButtonStyle.Success" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => DisableMod(mod))" @onclick:stopPropagation="true" />
+                        <RadzenButton Icon="toggle_on" ButtonStyle="ButtonStyle.Success" Variant="Variant.Flat" Size="ButtonSize.Small" Click="@(args => DisableMod(mod))" @onclick:stopPropagation="true" />
                     }
                     else if (mod.IsDisable && (mod.IsDownloaded || mod.IsPreviousVersion))
                     {
-                        <RadzenButton Icon="toggle_off" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => EnableMod(mod))" @onclick:stopPropagation="true" />
+                        <RadzenButton Icon="toggle_off" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Small" Click="@(args => EnableMod(mod))" @onclick:stopPropagation="true" />
                     }           
             </Template>
         </RadzenDataGridColumn>
         }
-        <RadzenDataGridColumn TItem="Mod" Context="mod" Filterable="false" Sortable="false" TextAlign="TextAlign.Right" Width="55px">
+        <RadzenDataGridColumn TItem="Mod" Context="mod" Filterable="false" Sortable="false" TextAlign="TextAlign.Right" Width="45px">
             <Template Context="mod">
-                <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => EditRow(mod))" @onclick:stopPropagation="true" />
+                <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Small" Click="@(args => EditRow(mod))" @onclick:stopPropagation="true" />
             </Template>
             <EditTemplate Context="mod">
-                <RadzenButton Icon="save" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@((args) => SaveRow(mod))">
+                <RadzenButton Icon="save" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat" Size="ButtonSize.Small" Click="@((args) => SaveRow(mod))">
                 </RadzenButton>
             </EditTemplate>
         </RadzenDataGridColumn>
-        <RadzenDataGridColumn TItem="Mod" Context="mod" Filterable="false" Sortable="false" TextAlign="TextAlign.Right" Width="55px">
+        <RadzenDataGridColumn TItem="Mod" Context="mod" Filterable="false" Sortable="false" TextAlign="TextAlign.Right" Width="45px">
             <Template Context="mod">
-                @if (ShowIsEnableButton)
-                {
                 @if (mod.IsDownloaded || mod.IsPreviousVersion || DefinitionMode)
                     {
-                        <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Variant="Variant.Flat" Shade="Shade.Lighter" Size="ButtonSize.Medium" class="my-1 ms-1" Click="@(args => DeleteRow(mod))" @onclick:stopPropagation="true" />
+                        <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Variant="Variant.Flat" Shade="Shade.Lighter" Size="ButtonSize.Small" class="my-1 ms-1" Click="@(args => DeleteRow(mod))" @onclick:stopPropagation="true" />
                     }
-                }
             </Template>
             <EditTemplate Context="mod">
-                <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" class="my-1 ms-1" Click="@((args) => CancelEdit(mod))">
+                <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Small" class="my-1 ms-1" Click="@((args) => CancelEdit(mod))">
                 </RadzenButton>
-                <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Variant="Variant.Flat" Shade="Shade.Lighter" Size="ButtonSize.Medium" class="my-1 ms-1" Click="@(args => DeleteRow(mod))">
+                <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Variant="Variant.Flat" Shade="Shade.Lighter" Size="ButtonSize.Small" class="my-1 ms-1" Click="@(args => DeleteRow(mod))">
                 </RadzenButton>
             </EditTemplate>
         </RadzenDataGridColumn>
@@ -188,7 +185,7 @@
     private bool IsNew = false;
     private bool IsLoading = false;
     private bool IsReady = false;
-    private string Url = "https://drive.google.com/uc?id=1AEDTUYVP9Zj0EEeEyjKBsLyLeifNQgr4&export=download";
+    private string Url = "";
     private Settings settings = null;
 
 
@@ -202,6 +199,7 @@
             settings = await modManagerService.GetSettings();
             if (string.IsNullOrEmpty(settings.DCSSaveGamesPath))
                 NavigationManager.NavigateTo("/AppSettings");
+            Url = settings.SquadronUrl;
 
         }
         catch (Exception ex)
@@ -311,6 +309,8 @@
             IsLoading = true;
             StateHasChanged();
             Mods=  await modManagerService.DownloadFileDefinitionAsync( Url);
+            settings.SquadronUrl = Url;
+            modManagerService.SaveSettings(settings);
             IsLoading = false;
             IsReady = true;
             StateHasChanged();
@@ -394,7 +394,7 @@
     {
         try
         {
-            StateHasChanged();
+           
             modManagerService.EnableMod(modDefinition);
             modDefinition.IsDisable = false;
             modDefinition.IsDownloaded = true;
@@ -416,13 +416,14 @@
         modToUpdate = null;
         if (!DefinitionMode)
             modManagerService.UpdateMod(mod);
+        StateHasChanged();
     }
-    void OnCreateRow(Mod mod)
+    async void OnCreateRow(Mod mod)
     {
-        if (!DefinitionMode)
-            modManagerService.AddMod(mod);
+        mod=  await modManagerService.AddMod(mod,!DefinitionMode);
+        Mods.Add(mod);
         modToInsert = null;
-        ;
+        StateHasChanged();
     }
 
 

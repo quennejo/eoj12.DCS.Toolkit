@@ -7,9 +7,9 @@ namespace eoj12.DCS.Toolkit.Models
 {
     public class Mod
     {
-        public string Title { get; set; }
+        public string Title { get; set; } = "";
         public string Description { get; set; }
-        public string Version { get; set; }
+        public string Version { get; set; } = "";
         public string Size { get; set; }
         public string Url { get; set; }
         public string TargetFolder { get; set; }
