@@ -9,7 +9,6 @@
 @inject DialogService DialogService
 @inject NavigationManager NavigationManager
 <RadzenDialog />
-@*<RadzenButton Text="Show confirm dialog" Click=@(args => DialogService.Confirm("Are you sure?", "MyTitle", new ConfirmOptions() { OkButtonText = "Yes", CancelButtonText = "No" })) />*@
 
 @if (ShowLoadFileDefinition)
 {
@@ -19,11 +18,10 @@
             <div class="col">
                 <RadzenLabel Text="Enter mod definition Url :" />
                 <input type="text" class="form-control" @bind-value="Url" />
-                    <RadzenButton Shade="Shade.Lighter" ButtonStyle=" ButtonStyle.Primary" Icon="add_circle_outline" Text="Load Definition file" Click="@DownloadFileDefinition" />
+                    <RadzenButton Shade="Shade.Lighter" ButtonStyle=" ButtonStyle.Primary" Icon="add_circle_outline" Text="Load Definition file" Click="@DownloadFileDefinition" Disabled="@string.IsNullOrEmpty(Url)"/>
             </div>
             <div class="col">
                 <RadzenLabel Text="Select local file :" />
-@*                <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H3">Select local file :</RadzenText>*@
                 <InputFile class="form-control" OnChange="@DownloadFileDefinitionFromFile" accept=".json" />
             </div>
         </div>
@@ -95,7 +93,7 @@
             </EditTemplate>
         </RadzenDataGridColumn>
         }
-        @if (ShowIsDownloadButton){
+        @if (ShowIsDownloadButton & modToInsert ==null ){
         <RadzenDataGridColumn TItem="Mod" Context="mod" Filterable="false" Sortable="false" TextAlign="TextAlign.Right" Width="45px">
             <Template Context="mod">
   
@@ -204,7 +202,7 @@
         }
         catch (Exception ex)
         {
-            throw;
+            await ShowErrorMessages(ex.Message);
         }
     }
 
@@ -223,7 +221,7 @@
         }
         catch (Exception ex)
         {
-            throw;
+            await ShowErrorMessages(ex.Message);
         }
     }
     private async Task ExportMods()
@@ -235,14 +233,21 @@
         }
         catch (Exception ex)
         {
-            throw;
+            await ShowErrorMessages(ex.Message);
         }
     }
 
     async Task EditRow(Mod mod)
     {
-        modToUpdate = mod;
-        await modsGrid.EditRow(mod);
+        try
+        {
+            modToUpdate = mod;
+            await modsGrid.EditRow(mod);
+        }
+        catch (Exception ex)
+        {
+            await ShowErrorMessages(ex.Message);
+        }
     }
     /// <summary>
     /// On Add button click
@@ -250,41 +255,62 @@
     /// <returns></returns>
     async Task InsertRow()
     {
-        modToInsert = new Mod();
-        await modsGrid.InsertRow(modToInsert);
+        try
+        {
+            modToInsert = new Mod();
+            await modsGrid.InsertRow(modToInsert);
+        }
+        catch (Exception ex)
+        {
+            await ShowErrorMessages(ex.Message);
+        }
     }
     async Task SaveRow(Mod mod)
     {
-        await modsGrid.UpdateRow(mod);
+        try
+        {
+            await modsGrid.UpdateRow(mod);
+        }
+        catch (Exception ex)
+        {
+            await ShowErrorMessages(ex.Message);
+        }
     }
     async Task DeleteRow(Mod mod)
     {
-        if (mod == modToInsert)
+        try
         {
-            modToInsert = null;
-        }
+            if (mod == modToInsert)
+            {
+                modToInsert = null;
+            }
 
-        if (mod == modToUpdate)
-        {
-            modToUpdate = null;
-        }
+            if (mod == modToUpdate)
+            {
+                modToUpdate = null;
+            }
 
-        if (Mods.Contains(mod))
-        {
-            IsReady = false;
-            IsLoading = true;
-            if(!DefinitionMode)
-                modManagerService.DeleteMod(mod);
-            Mods.Remove(mod);
-            IsReady = true;
-            IsLoading = false;
+            if (Mods.Contains(mod))
+            {
+                IsReady = false;
+                IsLoading = true;
+                if (!DefinitionMode)
+                    modManagerService.DeleteMod(mod);
+                Mods.Remove(mod);
+                IsReady = true;
+                IsLoading = false;
 
-            await modsGrid.Reload();
+                await modsGrid.Reload();
+            }
+            else
+            {
+                modsGrid.CancelEditRow(mod);
+                await modsGrid.Reload();
+            }
         }
-        else
+        catch (Exception ex)
         {
-            modsGrid.CancelEditRow(mod);
-            await modsGrid.Reload();
+            await ShowErrorMessages(ex.Message);
         }
     }
 
@@ -292,19 +318,22 @@
     {
         try
         {
+            ShowBusyDialog("Loading File Definition... ");
             var reader = await new StreamReader(e.File.OpenReadStream()).ReadToEndAsync();
             Mods = await modManagerService.DownloadFileDefinitionAsync(e.File.OpenReadStream()); ;
             StateHasChanged();
+            CloseBusyDialog();
         }
         catch (Exception ex)
         {
-            throw new Exception("File not supported. Please select .json file");   
+            await ShowErrorMessages("File not supported. Please select .json file");
         }
     }
     private async Task DownloadFileDefinition()
     {
         try
         {
+            ShowBusyDialog("Downloading File Definition... ");
             IsReady = false;
             IsLoading = true;
             StateHasChanged();
@@ -314,22 +343,25 @@
             IsLoading = false;
             IsReady = true;
             StateHasChanged();
+            CloseBusyDialog();
         }
         catch (Exception ex)
         {
-            throw new Exception("nmnmn");
-
+            await ShowErrorMessages(ex.Message);
         }
     }
     private async Task DownloadMod(Mod modDefinition)
     {
         try
         {
+            ShowBusyDialog($"Downloading {modDefinition.Title} ... ");
             modDefinition.IsDownloading = true;
             var url = modDefinition.Url.ToString();
             var contentStream = await modManagerService.DownloadFileAsync(url);
             modDefinition.IsDownloading = false;
             modDefinition.IsExtracting = true;
+            CloseBusyDialog();
+            ShowBusyDialog("Extracting mod... ");
             StateHasChanged();
             modDefinition.ModEntries = modManagerService.ExtractFileFromStream(contentStream, @$"{settings.DCSSaveGamesPath}\{modDefinition.TargetFolder}");
             modDefinition.IsDownloaded = true;
@@ -337,23 +369,25 @@
             modDefinition.IsExtracting = false;
             modManagerService.SaveLocalDb();
             StateHasChanged();
+            CloseBusyDialog();
         }
         catch (Exception ex)
         {
-
-            throw;
+            await ShowErrorMessages(ex.Message);
         }
     }
     private async Task UpdateMod(Mod modDefinition)
     {
         try
         {
-            StateHasChanged();
+            ShowBusyDialog($"Downloading & Updating {modDefinition.Title} ... ");
             modDefinition.IsDownloading = true;
             var url = modDefinition.Url.ToString();
             var webFileInfo = await modManagerService.DownloadFileAsync(url);
             modDefinition.IsDownloading = false;
             modDefinition.IsExtracting = true;
+            CloseBusyDialog();
+            ShowBusyDialog("Extracting mod... ");
             StateHasChanged();
             modManagerService.DeleteMod(modDefinition);
             modDefinition.ModEntries = modManagerService.ExtractFileFromStream(webFileInfo, @$"{settings.DCSSaveGamesPath}\{modDefinition.TargetFolder}");
@@ -363,11 +397,11 @@
             modDefinition.IsExtracting = false;
             modManagerService.SaveLocalDb();
             StateHasChanged();
+            CloseBusyDialog();
         }
         catch (Exception ex)
         {
-
-            throw;
+            await ShowErrorMessages(ex.Message);
         }
     }
 
@@ -385,8 +419,7 @@
         }
         catch (Exception ex)
         {
-
-            throw;
+            await ShowErrorMessages(ex.Message);
         }
     }
 
@@ -394,7 +427,7 @@
     {
         try
         {
-           
+
             modManagerService.EnableMod(modDefinition);
             modDefinition.IsDisable = false;
             modDefinition.IsDownloaded = true;
@@ -402,30 +435,44 @@
         }
         catch (Exception ex)
         {
-
-            throw;
+            await ShowErrorMessages(ex.Message);
         }
     }
 
     void OnUpdateRow(Mod mod)
     {
-        if (mod == modToInsert)
+        try
         {
-            modToInsert = null;
+            if (mod == modToInsert)
+            {
+                modToInsert = null;
+            }
+            modToUpdate = null;
+            if (!DefinitionMode)
+                modManagerService.UpdateMod(mod);
+            StateHasChanged();
         }
-        modToUpdate = null;
-        if (!DefinitionMode)
-            modManagerService.UpdateMod(mod);
-        StateHasChanged();
+        catch (Exception ex)
+        {
+            ShowErrorMessages(ex.Message).Wait();
+        }
     }
     async void OnCreateRow(Mod mod)
     {
-        mod=  await modManagerService.AddMod(mod,!DefinitionMode);
-        Mods.Add(mod);
-        modToInsert = null;
-        StateHasChanged();
+        try
+        {
+            mod = await modManagerService.AddMod(mod, !DefinitionMode);
+            modToInsert = mod;
+            Mods.Add(mod);
+            await modsGrid.Reload();
+            StateHasChanged();
+            modToInsert = null;
+        }
+        catch (Exception ex)
+        {
+            await ShowErrorMessages(ex.Message);
+        }
     }
-
 
     void CancelEdit(Mod mod)
     {
@@ -433,17 +480,8 @@
         {
             modToInsert = null;
         }
-
         modToUpdate = null;
-
         modsGrid.CancelEditRow(mod);
-
-        //var orderEntry = dbContext.Entry(order);
-        //if (orderEntry.State == EntityState.Modified)
-        //{
-        //    orderEntry.CurrentValues.SetValues(orderEntry.OriginalValues);
-        //    orderEntry.State = EntityState.Unchanged;
-        //}
     }
     void Reset()
     {
@@ -452,5 +490,34 @@
     }
 
 
+    async Task ShowBusyDialog(string withMessageAsString = "Loading...")
+    {
+
+            await BusyDialog(withMessageAsString);
+        
+    }
+
+    async Task BusyDialog(string message)
+    {
+        await DialogService.OpenAsync("", ds =>
+    @<div>
+        <div class="row">
+            <div class="col-md-12">
+                @message
+            </div>
+        </div>
+    </div>, new DialogOptions() { ShowTitle = false, Style = "min-height:auto;min-width:auto;width:auto" });
+        await Task.Delay(2000);
+    }
+    async Task CloseBusyDialog()
+    {
+         DialogService.Close();
+    }
+
+    async Task ShowErrorMessages(string errorMessage)
+    {
+        DialogService.Alert(errorMessage, "Error", new AlertOptions() { OkButtonText = "Ok" });
+
+    }
 
 }
