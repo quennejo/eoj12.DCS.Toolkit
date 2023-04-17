@@ -8,17 +8,18 @@ namespace eoj12.DCS.Toolkit.Models
     public class Mod
     {
         public string Title { get; set; } = "";
+        public string ParentModTitle { get; set; } = "";
         public string Description { get; set; }
         public string Version { get; set; } = "";
         public string Size { get; set; }
         public string Url { get; set; }
         public string TargetFolder { get; set; }
-
         public bool IsDownloaded { get; set; }
         public bool IsDownloading { get; set; }
         public bool IsExtracting { get; set; }
         public bool IsPreviousVersion { get; set; }
         public bool IsDisable { get; set; }
+        public bool IsModDefinition { get; set; }
 
         private List<ModEntry> _modEntries;
         public List<ModEntry> ModEntries
@@ -35,7 +36,7 @@ namespace eoj12.DCS.Toolkit.Models
         {
 
         }
-        public Mod(string title, string description, string version, string url, string targetFolder, bool isDownloaded)
+        public Mod(string title, string description, string version, string url, string targetFolder, bool isDownloaded,bool isModDefinition)
         {
             Title = title;
             Description = description;
@@ -43,6 +44,7 @@ namespace eoj12.DCS.Toolkit.Models
             Url = url;
             TargetFolder = targetFolder;
             IsDownloaded = isDownloaded;
+            IsDownloading = isModDefinition;
         }
 
 
@@ -107,6 +109,8 @@ namespace eoj12.DCS.Toolkit.Models
                 Title = mod.Title,
                 Url = mod.Url,
                 Version = mod.Version,
+                ParentModTitle = mod.ParentModTitle,
+                IsModDefinition = mod.IsModDefinition,
 
             };
         }

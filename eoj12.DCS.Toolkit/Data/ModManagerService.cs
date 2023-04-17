@@ -57,9 +57,14 @@ namespace eoj12.DCS.Toolkit.Data
 
         }
 
-        public async Task<List<Mod>> GetMods() {
+        public async Task<List<Mod>> GetMods(bool excludeModDefinitions) {
 
-            var mods =LocalDb.CopyMods();     
+            List<Mod> mods = null;
+            if(excludeModDefinitions)
+                mods = LocalDb.CopyMods().Where(m=>!m.IsModDefinition).ToList();
+            else
+                mods = LocalDb.CopyMods();
+
             return mods.OrderBy(m=>m.Title).ToList();
 
              
@@ -164,13 +169,12 @@ namespace eoj12.DCS.Toolkit.Data
                 var directories = directoryInfo.GetDirectories();
                 foreach (var modDirectory in directories)
                 {
-                    var localMod = new Mod(modDirectory.Name, "", "", "", modPath, true);
+                    var localMod = new Mod(modDirectory.Name, "", "", "", modPath, true,false);
                     var subDirectories = modDirectory.GetDirectories("*.*", SearchOption.AllDirectories);
                     ModEntry modEntry = new ModEntry(modDirectory.Name, modDirectory.FullName, true);
                     localMod.ModEntries.Add(modEntry);
                     foreach (var subDirectory in subDirectories)
                     {
-
                         modEntry = new ModEntry(subDirectory.Name, subDirectory.FullName, true);
                         localMod.ModEntries.Add(modEntry);
                     }
@@ -185,10 +189,26 @@ namespace eoj12.DCS.Toolkit.Data
                     localMods.Add(localMod);
                 }
             }
-            foreach (var mod in localMods)
+            foreach (var localMod in localMods)
             {
-                if (!LocalDb.Mods.Any(m => m.Title.ToLower() == mod.Title.ToLower()))
-                    LocalDb.Mods.Add(mod);
+                //find parent mod
+                string searchKey = $@"\{localMod.Title}\";
+                var dbParentMod = LocalDb.Mods.FirstOrDefault(m => m.ModEntries.Any(e=>e.Name.ToLower() == "" && e.Path.EndsWith($@"{localMod.Title}/") || e.Path.Contains(searchKey)));
+                if(dbParentMod != null)
+                    localMod.ParentModTitle= dbParentMod.Title;
+                var dbMod = LocalDb.Mods.FirstOrDefault(m => m.Title.ToLower() == localMod.Title.ToLower());
+                if (dbMod == null)
+                    LocalDb.Mods.Add(localMod);
+                else
+                {
+                    dbMod.IsDisable = false;
+                    if (dbParentMod != null)
+                    {
+                        dbMod.ParentModTitle = localMod.ParentModTitle;
+                        dbMod.Description =string.IsNullOrEmpty(dbMod.Description)? dbParentMod.Description:dbMod.Description;
+                        dbMod.Version = string.IsNullOrEmpty(dbMod.Version) ? dbParentMod.Version : dbMod.Version;
+                    }
+                }
 
             }
             SaveLocalDb();
@@ -201,9 +221,7 @@ namespace eoj12.DCS.Toolkit.Data
                float mb = ((size / 1024) / 1024);
                sizeString = Math.Round(mb,2) + " MB";
             }
-
             return sizeString;
-
         }
 
 
@@ -215,7 +233,7 @@ namespace eoj12.DCS.Toolkit.Data
             {
                 if (dbMod == null)
                 {
-                    dbMod = new Mod(mod.Title, mod.Description, mod.Version, fileInfo.ResponseUri.ToString(), mod.TargetFolder, false)
+                    dbMod = new Mod(mod.Title, mod.Description, mod.Version, fileInfo.ResponseUri.ToString(), mod.TargetFolder, false,true)
                     {
                         Size = GetSize(fileInfo.FileSize),
                     };
@@ -339,14 +357,22 @@ namespace eoj12.DCS.Toolkit.Data
             var dbMod = LocalDb.Mods.FirstOrDefault(m=>m.Title == mod.Title && m.Version ==m.Version);  
             foreach (var modEntry in dbMod.ModEntries.Where(e => e.IsDirectory == false))
             {
-                File.Delete($"{modEntry.Path}");
+                try
+                {
+                    File.Delete($"{modEntry.Path}");
+                }
+                catch (Exception ex)
+                {
+                    //A mod directory can be part of many mods
+                }
             }
             var directoryEntries = dbMod.ModEntries.Where(e => e.IsDirectory).OrderByDescending(e => e.Path).ToList();
             foreach (var modEntry in directoryEntries) { 
                 DirectoryInfo directoryInfo = new DirectoryInfo(modEntry.Path);
                 if (directoryInfo.Exists && directoryInfo.GetFiles().Length == 0)
                 {
-                    Directory.Delete(modEntry.Path);
+                    if (directoryInfo.GetDirectories().Count() == 0)
+                        Directory.Delete(modEntry.Path);
                 }
             }
             LocalDb.Mods.Remove(dbMod);
@@ -370,7 +396,14 @@ namespace eoj12.DCS.Toolkit.Data
             foreach (var modEntry in dbMod.ModEntries.Where(e => e.IsDirectory == false))
             {
                 var tempPath = modEntry.Path.Replace(LocalDb.Settings.DCSSaveGamesPath, ModManagerTempPath);
-                File.Move(modEntry.Path, tempPath,true);
+                try
+                {
+                    File.Move(modEntry.Path, tempPath,true);
+                }catch (Exception ex)
+                {
+                    //A mod directory can be part of many mods
+                }
+
             }
             directoryEntries = dbMod.ModEntries.Where(e => e.IsDirectory).OrderByDescending(e => e.Path).ToList();
             foreach (var modEntry in directoryEntries)
@@ -378,7 +411,8 @@ namespace eoj12.DCS.Toolkit.Data
                 DirectoryInfo directoryInfo = new DirectoryInfo(modEntry.Path);
                 if (directoryInfo.Exists && directoryInfo.GetFiles().Length == 0)
                 {
-                    Directory.Delete(modEntry.Path);
+                    if (directoryInfo.GetDirectories().Count() == 0)
+                        Directory.Delete(modEntry.Path);
                 }
             }
 
@@ -402,7 +436,13 @@ namespace eoj12.DCS.Toolkit.Data
             foreach (var modEntry in dbMod.ModEntries.Where(e => e.IsDirectory == false))
             {
                 var tempPath = modEntry.Path.Replace(LocalDb.Settings.DCSSaveGamesPath, ModManagerTempPath);
-                File.Move(tempPath,modEntry.Path, true);
+                try
+                {
+                    File.Move(tempPath, modEntry.Path, true);
+                }catch (Exception ex)
+                {
+                    //A mod directory can be part of many mods
+                }
             }
             directoryEntries = dbMod.ModEntries.Where(e => e.IsDirectory).OrderByDescending(e => e.Path).ToList();
             foreach (var modEntry in directoryEntries)
@@ -411,7 +451,8 @@ namespace eoj12.DCS.Toolkit.Data
                 DirectoryInfo directoryInfo = new DirectoryInfo(tempPath);
                 if (directoryInfo.Exists && directoryInfo.GetFiles().Length == 0)
                 {
-                    Directory.Delete(tempPath);
+                    if (directoryInfo.GetDirectories().Count() == 0)
+                        Directory.Delete(tempPath);      
                 }             
             }
 

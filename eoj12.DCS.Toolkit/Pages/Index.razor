@@ -17,7 +17,7 @@
         await base.OnInitializedAsync();
         try
         {
-            mods = await modManagerService.GetMods();
+            mods = await modManagerService.GetMods(true);
         }
         catch (Exception ex)
         {
