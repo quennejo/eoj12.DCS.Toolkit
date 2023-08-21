@@ -29,6 +29,16 @@
         <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</SupportedOSPlatformVersion>
         <TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
         <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'tizen'">6.5</SupportedOSPlatformVersion>
+        <GenerateAppInstallerFile>True</GenerateAppInstallerFile>
+        <AppxAutoIncrementPackageRevision>True</AppxAutoIncrementPackageRevision>
+        <AppxSymbolPackageEnabled>True</AppxSymbolPackageEnabled>
+        <GenerateTestArtifacts>True</GenerateTestArtifacts>
+        <AppInstallerUri>C:\Users\joequ\source\repos\eoj12.DCS.Toolkit\Packages</AppInstallerUri>
+        <HoursBetweenUpdateChecks>0</HoursBetweenUpdateChecks>
+        <AssemblyName>eoj12.DCS.Toolkit</AssemblyName>
+        <AppxPackageSigningEnabled>True</AppxPackageSigningEnabled>
+        <PackageCertificateThumbprint>3807A55C20A99DFFF5CF15885446B9EE3CB677C7</PackageCertificateThumbprint>
+        <AppxPackageSigningTimestampDigestAlgorithm>SHA256</AppxPackageSigningTimestampDigestAlgorithm>
     </PropertyGroup>
 
     <ItemGroup>
@@ -46,7 +56,7 @@
 
         <!-- Raw Assets (also remove the "Resources\Raw" prefix) -->
         <MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
-		<MauiIcon Include="Resources\AppIcon\icon.svg"/> 
+		<MauiIcon Include="Resources\AppIcon\icon.svg" /> 
     </ItemGroup>
 
     <ItemGroup>
@@ -54,6 +64,7 @@
     </ItemGroup>
 
     <ItemGroup>
+      <None Remove="DeployScript\DeployWindows.ps1" />
       <None Remove="Resources\AppIcon\appicon.old.svg" />
       <None Remove="Resources\AppIcon\appicon.svg" />
       <None Remove="Resources\AppIcon\appiconfg.svg.old" />
@@ -64,10 +75,14 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="CommunityToolkit.Maui" Version="5.0.0" />
+      <Content Include="DeployScript\DeployWindows.ps1" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="CommunityToolkit.Maui" Version="5.1.0" />
         <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="7.0.0" />
-        <PackageReference Include="Radzen.Blazor" Version="4.7.5" />
-        <PackageReference Include="SharpCompress" Version="0.32.2" />
+        <PackageReference Include="Radzen.Blazor" Version="4.10.4" />
+        <PackageReference Include="SharpCompress" Version="0.33.0" />
     </ItemGroup>
 
     <ItemGroup>

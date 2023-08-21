@@ -8,11 +8,12 @@ namespace eoj12.DCS.Toolkit.Models
     public class Mod
     {
         public string Title { get; set; } = "";
-        public string ParentModTitle { get; set; } = "";
+        public string Folder { get; set; } = "";
         public string Description { get; set; }
         public string Version { get; set; } = "";
         public string Size { get; set; }
         public string Url { get; set; }
+        public string FolderPath { get; set; }
         public string TargetFolder { get; set; }
         public bool IsDownloaded { get; set; }
         public bool IsDownloading { get; set; }
@@ -36,9 +37,10 @@ namespace eoj12.DCS.Toolkit.Models
         {
 
         }
-        public Mod(string title, string description, string version, string url, string targetFolder, bool isDownloaded,bool isModDefinition)
+        public Mod(string title,string folder, string description, string version, string url, string targetFolder, bool isDownloaded,bool isModDefinition)
         {
             Title = title;
+            Folder = folder;
             Description = description;
             Version = version;
             Url = url;
@@ -61,7 +63,7 @@ namespace eoj12.DCS.Toolkit.Models
             string jsonString = File.ReadAllText(filePath);
             return JsonSerializer.Deserialize<List<Mod>>(jsonString);
         }
-
+         
         public static List<Mod> DeserializeObject(FileStream stream)
         {
             using (StreamReader reader = new StreamReader(stream))
@@ -89,30 +91,34 @@ namespace eoj12.DCS.Toolkit.Models
             }
         }
 
-        public Mod CopyTo(Mod mod, bool includeEntries = true)
+        public Mod CopyTo(Mod mod, bool includeEntries = true,bool includeStatusProperties=true)
         {
-            Mod modCopy = GetModCopy(mod, includeEntries);
+            Mod modCopy = GetModCopy(mod, includeEntries, includeStatusProperties);
             return modCopy;
         }
 
-        private static Mod GetModCopy(Mod mod, bool includeEntries)
+        private static Mod GetModCopy(Mod mod, bool includeEntries, bool includeStatusProperties)
         {
-            return new Mod()
+            var retVal =new Mod()
             {
                 Description = mod.Description,
-                IsDisable = mod.IsDisable,
-                IsDownloaded = mod.IsDownloaded,
-                IsPreviousVersion = mod.IsPreviousVersion,
                 ModEntries = includeEntries ? mod.ModEntries : null,
                 Size = mod.Size,
                 TargetFolder = mod.TargetFolder,
                 Title = mod.Title,
                 Url = mod.Url,
+                FolderPath = mod.FolderPath,
                 Version = mod.Version,
-                ParentModTitle = mod.ParentModTitle,
-                IsModDefinition = mod.IsModDefinition,
-
+                Folder = mod.Folder,
+                IsModDefinition = mod.IsModDefinition,   
             };
+            if (includeStatusProperties)
+            {
+                retVal.IsDisable = mod.IsDisable;
+                retVal.IsDownloaded = mod.IsDownloaded;
+                retVal.IsPreviousVersion = mod.IsPreviousVersion;
+            }
+            return retVal;
         }
     }
 }

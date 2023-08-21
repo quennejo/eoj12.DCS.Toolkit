@@ -59,11 +59,13 @@ namespace eoj12.DCS.Toolkit.Data
 
         }
 
-        public  List<Mod> CopyMods()
+        public  List<Mod> CopyMods(bool excludeModDefinition)
         {
             List<Mod> mods = new List<Mod>();
             Mods.ForEach(mod => mods.Add(mod.CopyTo(mod)));
-            return mods;
+            if (excludeModDefinition)
+              mods =  mods.Where(m => !m.IsModDefinition).OrderBy(m=>m.Title).ToList();
+            return mods.OrderBy(m => m.Title).ToList();
         }
 
 }

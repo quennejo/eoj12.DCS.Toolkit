@@ -14,11 +14,13 @@ namespace eoj12.DCS.Toolkit.Names
     }
     public static class Folders
     {
+        public const string ROOT = $@"\";
+        public const string MODS = $@"\mods";
         public const string AIRCRAFT = $@"\mods\aircraft";
         public const string TECH = $@"\mods\tech";
         public const string LIVERIES = $@"\liveries";
 
-        public static List<string> FoldersList { get; internal set; } = new List<string>() { "",AIRCRAFT, TECH, LIVERIES };
+        public static List<string> FoldersList { get; internal set; } = new List<string>() {ROOT,AIRCRAFT, TECH, LIVERIES };
 
     }
    

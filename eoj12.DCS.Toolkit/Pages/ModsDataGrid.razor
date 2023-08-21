@@ -4,7 +4,6 @@
 @using System.Net.Http
 @using System.IO
 @using System.Threading.Tasks
-@*@using Microsoft.AspNetCore.Components;*@
 
 @inject DialogService DialogService
 @inject NavigationManager NavigationManager
@@ -17,8 +16,8 @@
         <div class="row">
             <div class="col">
                 <RadzenLabel Text="Enter mod definition Url :" />
-                <input type="text" class="form-control" @bind-value="Url" />
-                    <RadzenButton Shade="Shade.Lighter" ButtonStyle=" ButtonStyle.Primary" Icon="add_circle_outline" Text="Load Definition file" Click="@DownloadFileDefinition" Disabled="@string.IsNullOrEmpty(Url)"/>
+                <input type="text" class="form-control" @bind-value="_url" />
+                    <RadzenButton Shade="Shade.Lighter" ButtonStyle=" ButtonStyle.Primary" Icon="rotate_right" Text="Load Definition file" Click="@DownloadFileDefinition" Disabled="@string.IsNullOrEmpty(_url)" />
             </div>
             <div class="col">
                 <RadzenLabel Text="Select local file :" />
@@ -28,50 +27,98 @@
         </RadzenFieldset>
     </div>
 }
-
-
-
     <div class="form-group">
         <div class="row">
             <div class="col">
             @if (ShowScanMod)
             {
-                <RadzenButton ButtonStyle="ButtonStyle.Primary" Icon="add_circle_outline" class="mt-2 mb-4" Text="Scan Mod" Click="@ScanMod" Disabled=@(modToInsert != null || modToUpdate != null) />
+                <RadzenButton ButtonStyle="ButtonStyle.Primary" Icon="scanner" class="mt-2 mb-4" Text="Scan Mod" Click="@ScanMod" Disabled=@(_modToInsert != null || _modToUpdate != null) />
             }
-            <RadzenButton ButtonStyle="ButtonStyle.Primary" Icon="add_circle_outline" class="mt-2 mb-4" Text="Add New Mod" Click="@InsertRow" Disabled=@(modToInsert != null || modToUpdate != null) />
+            @if (DefinitionMode)
+            {
+                <RadzenButton ButtonStyle="ButtonStyle.Primary" Icon="add_circle_outline" class="mt-2 mb-4" Text="Add Mod" Click="@InsertRow" Disabled=@(_modToInsert != null || _modToUpdate != null) />
+            }else
+            {
+                <RadzenButton ButtonStyle="ButtonStyle.Primary" Icon="add_circle_outline" class="mt-2 mb-4" Text="Install Mod" Click="@InsertRow" Disabled=@(_modToInsert != null || _modToUpdate != null) />
+            }
+            @if (!DefinitionMode && IsNew)
+            {
+                <div>
+                <RadzenLabel Text="Select Mod Package (.zip, .rar) :" />
+                <InputFile class="form-control" accept="" OnChange="OnModSelection" />
+                </div>
+            }
             @if (ShowLoadFileDefinition)
             {
-                <RadzenButton ButtonStyle="ButtonStyle.Primary" Icon="add_circle_outline" class="mt-2 mb-4" Text="Export Definition file" Click="@ExportMods" />
+                <RadzenButton ButtonStyle="ButtonStyle.Primary" Icon="import_export" class="mt-2 mb-4" Text="Export Definition file" Click="@ExportMods" />
             }
             </div>
             <div class="col">
             @if (ShowIsEnableButton)
             {
-                <RadzenButton ButtonStyle="ButtonStyle.Success" Icon="add_circle_outline" class="mt-2 mb-4" Text="Enable All" Click="@EnableAll" />
-                <RadzenButton ButtonStyle="ButtonStyle.Success" Icon="add_circle_outline" class="mt-2 mb-4" Text="Disable All" Click="@DisableAll" Shade="Shade.Lighter" />
+                <RadzenButton ButtonStyle="ButtonStyle.Success" Icon="toggle_on" class="mt-2 mb-4" Text="Enable All" Click="@EnableAll" />
+                <RadzenButton ButtonStyle="ButtonStyle.Success" Icon="toggle_off" class="mt-2 mb-4" Text="Disable All" Click="@DisableAll" Shade="Shade.Lighter" />
             }
             </div>
         </div>
     </div>
-<RadzenDataGrid @ref="modsGrid" AllowAlternatingRows="false" AllowFiltering="true" AllowPaging="true" PageSize="15" AllowSorting="true" EditMode="DataGridEditMode.Single"
+<RadzenDataGrid @ref="_modsGrid" AllowAlternatingRows="false" AllowFiltering="true" AllowPaging="true" PageSize="15" AllowSorting="true" EditMode="DataGridEditMode.Single"
                 Data="@Mods" TItem="Mod" RowUpdate="@OnUpdateRow" RowCreate="@OnCreateRow" Sort="@Reset" Page="@Reset" Filter="@Reset" AllowGrouping="true" FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" Render="@OnRender" >
     <GroupHeaderTemplate>
         @context.Data.Key
     </GroupHeaderTemplate>
     <Columns>
-        <RadzenDataGridColumn TItem="Mod" Property="Title" Title="Title" Width="">
-            <EditTemplate Context="mod">
-                <RadzenTextBox @bind-Value="mod.Title" Style="width:100%; display: block" Name="Title" />
-                <RadzenRequiredValidator Text="Title is required" Component="Title" Popup="true" />
+      
+        @if (!DefinitionMode)
+        {
+            <RadzenDataGridColumn TItem="Mod" Property="Folder" Title="Name" Width="">
+            </RadzenDataGridColumn>
+
+        }
+        <RadzenDataGridColumn TItem="Mod" Property="Title" Title="Package" Width="">
+            <EditTemplate Context="mod" >
+                <RadzenTextBox @bind-Value="mod.Title" Style="width:100%; display: block" Name="Title" Disabled="_modToUpdate != null" />
+                <RadzenRequiredValidator Text="Package is required" Component="Title" Popup="true" />
             </EditTemplate>
         </RadzenDataGridColumn>
-        <RadzenDataGridColumn TItem="Mod" Property="ParentModTitle" Title="Mod Definition" Width="">
-        </RadzenDataGridColumn>
+          
+
         <RadzenDataGridColumn TItem="Mod" Property="Description" Title="Description">
             <EditTemplate Context="mod">
                 <RadzenTextBox @bind-Value="mod.Description" Style="width:100%; display: block" Name="Description" />
             </EditTemplate>
         </RadzenDataGridColumn>
+
+        @if (ShowModTagetFolder)
+        {
+            <RadzenDataGridColumn TItem="Mod" Property="TargetFolder" Title="Folder">
+                <Template Context="mod">
+                    @if (mod.TargetFolder != null)
+                    {
+                        if (mod.TargetFolder.ToLower() == Names.Folders.TECH)
+                        {
+                            <RadzenIcon Icon="trolley" IconStyle="IconStyle.Info" alt="@mod.TargetFolder" />
+                        }
+                        else if (mod!.TargetFolder.ToLower() == Names.Folders.AIRCRAFT)
+                        {
+                            <RadzenIcon Icon="flight" IconStyle="IconStyle.Info" alt="@mod.TargetFolder" />
+                        }
+                        else if (mod!.TargetFolder.ToLower() == Names.Folders.LIVERIES)
+                        {
+                            <RadzenIcon Icon="palette" IconStyle="IconStyle.Info" alt="@mod.TargetFolder" />
+                        }
+                        else if (mod!.TargetFolder.ToLower() == Names.Folders.ROOT)
+                        {
+                            <RadzenIcon Icon="view_module" IconStyle="IconStyle.Info" alt="@mod.TargetFolder" />
+                        }
+                    }
+                </Template>
+                <EditTemplate Context="mod">
+                    <RadzenDropDown @bind-Value=@mod.TargetFolder Data=@Names.Folders.FoldersList Disabled="_modToUpdate != null && DefinitionMode ==false" Name="Folder" />
+                    <RadzenRequiredValidator Text="Folder is required" Component="Folder" Popup="true" />
+                </EditTemplate>
+            </RadzenDataGridColumn>
+        }
         <RadzenDataGridColumn TItem="Mod" Property="Version" Title="Version">
             <EditTemplate Context="mod">
                 <RadzenTextBox @bind-Value="mod.Version" Style="width:100%; display: block" Name="Version" />
@@ -86,37 +133,16 @@
                     <RadzenLink Path="@mod.Url" Text="Go to url" target="_blank">
                         <RadzenIcon Icon="link" />
                     </RadzenLink>
+                   
                 </Template>
                 <EditTemplate Context="mod">
-                <RadzenTextBox @bind-Value="mod.Url" Style="width:100%; display: block" Name="Url" />
+                    <RadzenTextBox @bind-Value="mod.Url" Style="width:100%; display: block" Name="Url" />
                 <RadzenRequiredValidator Text="Url is required" Component="Url" Popup="true" />
             </EditTemplate>
         </RadzenDataGridColumn>
         }
-        @if(ShowModTagetFolder){
-        <RadzenDataGridColumn TItem="Mod" Property="TargetFolder" Title="Target Folder"  >
-                <Template Context="mod">
-                @if(mod.TargetFolder != null){
-                    if (mod.TargetFolder.ToLower() == Names.Folders.TECH)
-                    {
-                        <RadzenIcon Icon="trolley"  IconStyle="IconStyle.Info" alt="@mod.TargetFolder"/>
-                    }
-                    else if (mod!.TargetFolder.ToLower() == Names.Folders.AIRCRAFT)
-                    {
-                        <RadzenIcon Icon="flight" IconStyle="IconStyle.Info" alt="@mod.TargetFolder" />
-                    }
-                    else if (mod!.TargetFolder.ToLower() == Names.Folders.LIVERIES)
-                    {
-                        <RadzenIcon Icon="palette" IconStyle="IconStyle.Info" alt="@mod.TargetFolder" /> 
-                    }
-                }
-                </Template>
-            <EditTemplate Context="mod">
-                    <RadzenDropDown @bind-Value=@mod.TargetFolder Data=@Names.Folders.FoldersList />
-            </EditTemplate>
-        </RadzenDataGridColumn>
-        }
-        @if (ShowIsDownloadButton & modToInsert ==null ){
+       
+        @if (ShowIsDownloadButton & _modToInsert ==null ){
         <RadzenDataGridColumn TItem="Mod" Context="mod" Filterable="false" Sortable="false" TextAlign="TextAlign.Right" Width="55px">
             <Template Context="mod">
   
@@ -130,7 +156,7 @@
                     }
                     else if (mod.IsPreviousVersion)
                     {
-                        <RadzenButton Icon="update" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => UpdateMod(mod))" @onclick:stopPropagation="true" />
+                        <RadzenButton Icon="update" ButtonStyle="ButtonStyle.Info" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => UpdateMod(mod))" @onclick:stopPropagation="true" />
                     }
                     else
                     {
@@ -200,14 +226,26 @@
     public bool ShowIsDownloadButton { get; set; } = true;
     [Parameter]
     public bool ShowIsEnableButton { get; set; } = true;
-    RadzenDataGrid<Mod> modsGrid;
-    Mod modToInsert;
-    Mod modToUpdate;
-    private bool IsNew = false;
-    private bool IsLoading = false;
-    private bool IsReady = false;
-    private string Url = "";
-    private Settings settings = null;
+    RadzenDataGrid<Mod> _modsGrid;
+    Mod _modToInsert;
+    Mod _modToUpdate;
+    IBrowserFile _file = null;
+    private string _url = "";
+    private Settings _settings = null;
+
+    public bool IsNew {
+        get
+        {
+            return _modToInsert != null;
+        } 
+    }
+    public bool IsEditing
+    {
+        get
+        {
+            return _modToUpdate != null;
+        }
+    }
 
 
 
@@ -217,10 +255,10 @@
         await base.OnInitializedAsync();
         try
         {
-            settings = await modManagerService.GetSettings();
-            if (string.IsNullOrEmpty(settings.DCSSaveGamesPath))
+            _settings = await modManagerService.GetSettings();
+            if (string.IsNullOrEmpty(_settings.DCSSaveGamesPath))
                 NavigationManager.NavigateTo("/AppSettings");
-            Url = settings.SquadronUrl;
+            _url = _settings.SquadronUrl;
 
         }
         catch (Exception ex)
@@ -231,26 +269,19 @@
 
     void OnRender(DataGridRenderEventArgs<Mod> args)
     {
-        if (args.FirstRender)
-        {
-            args.Grid.Groups.Add(new GroupDescriptor() { Title = "ParentModTitle", Property = "ParentModTitle", SortOrder = SortOrder.Ascending });
-            StateHasChanged();
-        }
+        //if (args.FirstRender)
+        //{
+        //    args.Grid.Groups.Add(new GroupDescriptor() { Title = "ParentModTitle", Property = "ParentModTitle", SortOrder = SortOrder.Ascending });
+        //    StateHasChanged();
+        //}
     }
-
-
 
     private async Task ScanMod()
     {
         try
         {
-            IsLoading = true;
-            IsReady = false;
-            StateHasChanged();
             var localMods = modManagerService.ScanMods();
-            Mods = modManagerService.LocalDb.CopyMods();
-            IsReady = true;
-            IsLoading = false;
+            Mods = modManagerService.LocalDb.CopyMods(true);
             StateHasChanged();
         }
         catch (Exception ex)
@@ -275,8 +306,8 @@
     {
         try
         {
-            modToUpdate = mod;
-            await modsGrid.EditRow(mod);
+            _modToUpdate = mod;
+            await _modsGrid.EditRow(mod);
         }
         catch (Exception ex)
         {
@@ -291,8 +322,8 @@
     {
         try
         {
-            modToInsert = new Mod();
-            await modsGrid.InsertRow(modToInsert);
+            _modToInsert = new Mod();
+            await _modsGrid.InsertRow(_modToInsert);
         }
         catch (Exception ex)
         {
@@ -303,7 +334,7 @@
     {
         try
         {
-            await modsGrid.UpdateRow(mod);
+            await _modsGrid.UpdateRow(mod);
         }
         catch (Exception ex)
         {
@@ -314,32 +345,27 @@
     {
         try
         {
-            if (mod == modToInsert)
+            if (mod == _modToInsert)
             {
-                modToInsert = null;
+                _modToInsert = null;
             }
 
-            if (mod == modToUpdate)
+            if (mod == _modToUpdate)
             {
-                modToUpdate = null;
+                _modToUpdate = null;
             }
 
             if (Mods.Contains(mod))
             {
-                IsReady = false;
-                IsLoading = true;
                 if (!DefinitionMode)
                     modManagerService.DeleteMod(mod);
                 Mods.Remove(mod);
-                IsReady = true;
-                IsLoading = false;
-
-                await modsGrid.Reload();
+                await _modsGrid.Reload();
             }
             else
             {
-                modsGrid.CancelEditRow(mod);
-                await modsGrid.Reload();
+                _modsGrid.CancelEditRow(mod);
+                await _modsGrid.Reload();
             }
         }
         catch (Exception ex)
@@ -353,7 +379,7 @@
         try
         {
             ShowBusyDialog("Loading File Definition... ");
-            var reader = await new StreamReader(e.File.OpenReadStream()).ReadToEndAsync();
+            //var reader = await new StreamReader(e.File.OpenReadStream()).ReadToEndAsync();
             Mods = await modManagerService.DownloadFileDefinitionAsync(e.File.OpenReadStream()); ;
             StateHasChanged();
             CloseBusyDialog();
@@ -363,19 +389,33 @@
             await ShowErrorMessages("File not supported. Please select .json file");
         }
     }
+    private async void OnModSelection(InputFileChangeEventArgs e)
+    {
+        try
+        {
+
+            //if(e.File.e)
+            _file = e.File;
+            var fileExtension = Path.GetExtension(e.File.Name);
+            if (string.IsNullOrEmpty(fileExtension) || ( fileExtension.ToLower() != ".rar" && fileExtension.ToLower() != ".zip"))
+                throw new Exception("File type not supported");
+            var fileName = e.File.Name.Replace(fileExtension,"");
+            _modToInsert.Title = fileName;
+
+        }
+        catch (Exception ex)
+        {
+            await ShowErrorMessages("File not supported. Please select .rar or .zip file");
+        }
+    }
     private async Task DownloadFileDefinition()
     {
         try
         {
             ShowBusyDialog("Downloading File Definition... ");
-            IsReady = false;
-            IsLoading = true;
-            StateHasChanged();
-            Mods=  await modManagerService.DownloadFileDefinitionAsync( Url);
-            settings.SquadronUrl = Url;
-            modManagerService.SaveSettings(settings);
-            IsLoading = false;
-            IsReady = true;
+            Mods=  await modManagerService.DownloadFileDefinitionAsync( _url);
+            _settings.SquadronUrl = _url;
+            modManagerService.SaveSettings(_settings);
             StateHasChanged();
             CloseBusyDialog();
         }
@@ -397,14 +437,14 @@
             CloseBusyDialog();
             ShowBusyDialog("Extracting mod... ");
             StateHasChanged();
-            modDefinition.ModEntries = modManagerService.ExtractFileFromStream(contentStream, @$"{settings.DCSSaveGamesPath}\{modDefinition.TargetFolder}");
+            modDefinition.ModEntries = modManagerService.ExtractFileFromStream(contentStream,_settings.DCSSaveGamesPath,modDefinition.TargetFolder);
             modDefinition.IsDownloaded = true;
+            modDefinition.IsModDefinition = true;
             modManagerService.LocalDb.Mods.Add(modDefinition);
             modDefinition.IsExtracting = false;
-            modDefinition.IsModDefinition = true;
             modManagerService.SaveLocalDb();
+            modManagerService.ScanMods();
             StateHasChanged();
-            ScanMod();
             CloseBusyDialog();
         }
         catch (Exception ex)
@@ -426,14 +466,15 @@
             ShowBusyDialog("Extracting mod... ");
             StateHasChanged();
             modManagerService.DeleteMod(modDefinition);
-            modDefinition.ModEntries = modManagerService.ExtractFileFromStream(webFileInfo, @$"{settings.DCSSaveGamesPath}\{modDefinition.TargetFolder}");
+            modDefinition.ModEntries = modManagerService.ExtractFileFromStream(webFileInfo, _settings.DCSSaveGamesPath,modDefinition.TargetFolder);
             modDefinition.IsDownloaded = true;
             modDefinition.IsPreviousVersion = false;
+            modDefinition.IsModDefinition = true;
             modManagerService.LocalDb.Mods.Add(modDefinition);
             modDefinition.IsExtracting = false;
             modManagerService.SaveLocalDb();
-            StateHasChanged();
-            ScanMod();
+            modManagerService.ScanMods();
+            StateHasChanged();          
             CloseBusyDialog();
         }
         catch (Exception ex)
@@ -453,7 +494,7 @@
                     m.IsDownloaded = true;
                 }
             });
-            await modsGrid.Reload();
+            await _modsGrid.Reload();
 
         }
         catch (Exception ex)
@@ -474,7 +515,7 @@
                     m.IsDownloaded = true;
                 }
             });
-            await modsGrid.Reload();
+            await _modsGrid.Reload();
 
         }
         catch (Exception ex)
@@ -518,13 +559,16 @@
     {
         try
         {
-            if (mod == modToInsert)
+            if (mod == _modToInsert)
             {
-                modToInsert = null;
+                _modToInsert = null;
             }
-            modToUpdate = null;
-            if (!DefinitionMode)
+            _modToUpdate = null;
+            if (!DefinitionMode){
                 modManagerService.UpdateMod(mod);
+                Mods = modManagerService.LocalDb.CopyMods(true);
+                _modsGrid.Reload();
+            }
             StateHasChanged();
         }
         catch (Exception ex)
@@ -536,12 +580,19 @@
     {
         try
         {
-            mod = await modManagerService.AddMod(mod, !DefinitionMode);
-            modToInsert = mod;
+            if(!DefinitionMode)
+                ShowBusyDialog("Extracting  Mod... ");
+            mod = await modManagerService.AddMod(mod,_file, !DefinitionMode);
+            _modToInsert = mod;
             Mods.Add(mod);
-            await modsGrid.Reload();
+            _modToInsert = null;
+            if (!DefinitionMode)
+            {
+                CloseBusyDialog();
+                ScanMod();
+            }
+            await _modsGrid.Reload();
             StateHasChanged();
-            modToInsert = null;
         }
         catch (Exception ex)
         {
@@ -551,17 +602,17 @@
 
     void CancelEdit(Mod mod)
     {
-        if (mod == modToInsert)
+        if (mod == _modToInsert)
         {
-            modToInsert = null;
+            _modToInsert = null;
         }
-        modToUpdate = null;
-        modsGrid.CancelEditRow(mod);
+        _modToUpdate = null;
+        _modsGrid.CancelEditRow(mod);
     }
     void Reset()
     {
-        modToInsert = null;
-        modToUpdate = null;
+        _modToInsert = null;
+        _modToUpdate = null;
     }
 
 
