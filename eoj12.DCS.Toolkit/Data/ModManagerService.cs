@@ -669,9 +669,9 @@ namespace eoj12.DCS.Toolkit.Data
             return entries;
         }
 
-        //C:\Users\joequ\Saved Games\DCS.openbetaModManager2\Liveries\  \Liveries\T-45\CT-155201
-        //C:\Users\joequ\Saved Games\DCS.openbetaModManager3\           \425 Warthog Liveries Pack_02\Liveries\A-10CII\RCAF_425_LowVis_DarkGreenCamo
-        //C:\Users\joequ\Saved Games\DCS.openbetaModManager3\           \425 Warthog Liveries Pack_02\Mods\aircraft\A-10CII\RCAF_425_LowVis_DarkGreenCamo
+        //C:\Users\xx\Saved Games\DCS.openbetaModManager2\Liveries\  \Liveries\T-45\CT-155201
+        //C:\Users\xx\Saved Games\DCS.openbetaModManager3\           \425 Warthog Liveries Pack_02\Liveries\A-10CII\RCAF_425_LowVis_DarkGreenCamo
+        //C:\Users\xx\Saved Games\DCS.openbetaModManager3\           \425 Warthog Liveries Pack_02\Mods\aircraft\A-10CII\RCAF_425_LowVis_DarkGreenCamo
         private static string TrimPath(string outputPath, string targetFolder, string modEntryPath) {
             var modEntryPathFix = modEntryPath.Replace("/", "\\").ToLower();
             var retval = $@"{outputPath}\{modEntryPathFix}".ToLower();
