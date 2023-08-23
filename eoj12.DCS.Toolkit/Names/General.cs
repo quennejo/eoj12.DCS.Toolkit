@@ -8,8 +8,8 @@ namespace eoj12.DCS.Toolkit.Names
 {
     public static class General
     {
-        public const string MOD_MANAGER_PATH = @"Scripts\eoj12.ModManager";
-        public const string MOD_MANAGER_TEMP_PATH = @"Scripts\eoj12.ModManager\Temp";
+        public const string MOD_MANAGER_PATH = @"DCS.Toolkit";
+        public const string MOD_MANAGER_TEMP_PATH = @"DCS.Toolkit\Temp";
         public const string DB_Name = "localDb.json";
     }
     public static class Folders
@@ -20,7 +20,7 @@ namespace eoj12.DCS.Toolkit.Names
         public const string TECH = $@"\mods\tech";
         public const string LIVERIES = $@"\liveries";
 
-        public static List<string> FoldersList { get; internal set; } = new List<string>() {ROOT,AIRCRAFT, TECH, LIVERIES };
+        public static List<string> FoldersList { get; internal set; } = new List<string>() {AIRCRAFT, TECH, LIVERIES };
 
     }
    

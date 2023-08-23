@@ -15,8 +15,9 @@ using Microsoft.Maui.Controls;
 using System.Web;
 using System.Net.WebSockets;
 using SharpCompress;
+using eoj12.DCS.Toolkit.Data;
 
-namespace eoj12.DCS.Toolkit.Data
+namespace eoj12.DCS.Toolkit.Services
 {
     public class ModManagerService
     {
@@ -31,13 +32,13 @@ namespace eoj12.DCS.Toolkit.Data
             {
                 if (_localDb == null)
                 {
-                    _localDb = new LocalDb();      
+                    _localDb = new LocalDb();
                 }
                 return _localDb;
             }
             set { _localDb = value; }
         }
-           
+
 
         public ModManagerService()
         {
@@ -45,13 +46,14 @@ namespace eoj12.DCS.Toolkit.Data
             LocalDb = LocalDb.DeserializeObject(DbPath);
             if (LocalDb.Settings.DCSSaveGamesPath != null)
             {
-                ModManagerPath = @$"{LocalDb.Settings.DCSSaveGamesPath}\{Names.General.MOD_MANAGER_PATH}";
-                ModManagerTempPath = @$"{LocalDb.Settings.DCSSaveGamesPath}\{Names.General.MOD_MANAGER_TEMP_PATH}";
-                EnsureDirectory(ModManagerTempPath);         
+                ModManagerPath = @$"{LocalDb.Settings.DCSSaveGamesPath}\{General.MOD_MANAGER_PATH}";
+                ModManagerTempPath = @$"{LocalDb.Settings.DCSSaveGamesPath}\{General.MOD_MANAGER_TEMP_PATH}";
+                EnsureDirectory(ModManagerTempPath);
             }
         }
 
-        private void EnsureDirectory(string path) {
+        private void EnsureDirectory(string path)
+        {
             // Check if directory exists
             if (!Directory.Exists(path))
             {
@@ -60,62 +62,74 @@ namespace eoj12.DCS.Toolkit.Data
 
         }
 
-        public async Task<List<Mod>> GetMods(bool excludeModDefinitions) {
+        public async Task<List<Mod>> GetMods(bool excludeModDefinitions)
+        {
 
             List<Mod> mods = LocalDb.CopyMods(excludeModDefinitions);
 
-            return mods.OrderBy(m=>m.Title).ToList();
+            return mods.OrderBy(m => m.Title).ToList();
 
-             
+
         }
-        public async Task<Settings> GetSettings() {
+        public async Task<Settings> GetSettings()
+        {
             return LocalDb.Settings;
         }
-        public async void SaveSettings( Settings settings)
+        public async void SaveSettings(Settings settings)
         {
             if (Directory.Exists(settings.DCSSaveGamesPath))
             {
                 LocalDb.Settings.DCSSaveGamesPath = settings.DCSSaveGamesPath;
-                ModManagerPath = @$"{LocalDb.Settings.DCSSaveGamesPath}\{Names.General.MOD_MANAGER_PATH}";
-                ModManagerTempPath = @$"{LocalDb.Settings.DCSSaveGamesPath}\{Names.General.MOD_MANAGER_TEMP_PATH}";
+                ModManagerPath = @$"{LocalDb.Settings.DCSSaveGamesPath}\{General.MOD_MANAGER_PATH}";
+                ModManagerTempPath = @$"{LocalDb.Settings.DCSSaveGamesPath}\{General.MOD_MANAGER_TEMP_PATH}";
                 EnsureDirectory(ModManagerTempPath);
                 SaveLocalDb();
-            }else
+            }
+            else
             {
                 throw new Exception("DCS Save game path does not exist!");
             }
         }
-        public async void DeleteLocalDb() {
+        public async void DeleteLocalDb()
+        {
             File.Delete(DbPath);
             LocalDb = null;
         }
 
-        public async Task<List<Mod>> DownloadFileDefinitionAsync( string url)
+        public async Task<List<Mod>> DownloadFileDefinitionAsync(string url)
         {
-      
+
             LocalDb.ModDefinitionUrl = url;
             var webFileInfo = await DownloadFileAsync(url);
             return await DownloadFileDefinitionAsync(webFileInfo.Stream);
         }
 
-        public async Task<List<Mod>> DownloadFileDefinitionAsync( Stream stream)
+        public async Task<List<Mod>> DownloadFileDefinitionAsync(Stream stream)
         {
             List<Mod> mods = new List<Mod>();
             var squadronModeDefinitionList = await Mod.DeserializeObject(stream);
             var dbModDefinitionList = LocalDb.CopyMods(false);
-         
-        
+
+
             foreach (var squadronMod in squadronModeDefinitionList)
             {
                 var dbMod = dbModDefinitionList.FirstOrDefault(m => squadronMod.Title.ToLower() == m.Title.ToLower() && m.IsModDefinition);
+                // No Match
                 if (dbMod == null)
                 {
                     squadronMod.IsModDefinition = true;
                     squadronMod.IsDisable = false;
                     squadronMod.IsPreviousVersion = false;
                     squadronMod.IsDownloaded = false;
+                    var potentialMatch =dbModDefinitionList.FirstOrDefault(m =>( m.Title.ToLower().Contains(squadronMod.Title.ToLower()) || squadronMod.Title.ToLower().Contains(m.Title.ToLower())) && m.TargetFolder.ToLower() == squadronMod.TargetFolder.ToLower() && !m.IsModDefinition);
+                    if (potentialMatch != null)
+                    {
+                        squadronMod.IsPotentialMatch = true;
+                        squadronMod.PotentialMatch = potentialMatch;
+                    }
                     mods.Add(squadronMod);
                 }
+                //Match but need update
                 else if (squadronMod?.Version.ToLower() != dbMod.Version.ToLower())
                 {
                     var mod = new Mod()
@@ -134,16 +148,38 @@ namespace eoj12.DCS.Toolkit.Data
                     mods.Add(mod);
 
                 }
-                else {
+                //Match
+                else
+                {
                     var mod = dbMod.CopyTo(dbMod);
-                    mod.Url= squadronMod.Url;
-                    mod.TargetFolder= squadronMod.TargetFolder;
+                    mod.Url = squadronMod.Url;
+                    mod.TargetFolder = squadronMod.TargetFolder;
                     mod.Description = squadronMod.Description;
-                    mod.IsModDefinition= true;
-                    mods.Add(mod); }
+                    mod.IsModDefinition = true;
+                    mods.Add(mod);
+                }
+
             }
             mods.OrderBy(m => m.Title).ToList();
             return mods;
+        }
+
+        public async void Match(Mod mod)
+        {
+            var dbMod = LocalDb.Mods.FirstOrDefault(m => m.Title == mod.PotentialMatch.Title && m.TargetFolder.ToLower() == mod.PotentialMatch.TargetFolder.ToLower());
+
+            if (dbMod != null)
+            {
+                dbMod.Description = mod.Description;
+                dbMod.Version = mod.Version;
+                dbMod.IsDownloaded = true;
+                dbMod.IsPreviousVersion = false;
+                dbMod.IsModDefinition = true;
+                dbMod.Url = mod.Url;
+                mod.IsPotentialMatch = false;
+                mod.PotentialMatch = null;
+            }
+            SaveLocalDb();
         }
 
         public List<Mod> ScanMods()
@@ -152,16 +188,17 @@ namespace eoj12.DCS.Toolkit.Data
             ScanModsFolder(localMods, Folders.AIRCRAFT);
             ScanModsFolder(localMods, Folders.TECH);
             ScanModsFolder(localMods, Folders.LIVERIES);
-            return localMods.OrderBy(m=>m.Title).ToList();
+            return localMods.OrderBy(m => m.Title).ToList();
         }
-        public string ExportMods(List<Mod> mods) {
+        public string ExportMods(List<Mod> mods)
+        {
 
             string timeStamp = DateTime.Now.ToString("yyyyMMddhhmmss");
             string fileName = string.Format(@"{0}\Mods_{1}.json", ModManagerPath, timeStamp);
-            Mod.SerializeObject(mods.Select(m => m.CopyTo(m,false,false)).ToList(), fileName) ; 
-            return fileName ;        
+            Mod.SerializeObject(mods.Select(m => m.CopyTo(m, false, false)).ToList(), fileName);
+            return fileName;
         }
-        
+
         private void ScanModsFolder(List<Mod> localMods, string modPath)
         {
             DirectoryInfo directoryInfo = new DirectoryInfo(LocalDb.Settings.DCSSaveGamesPath + modPath);
@@ -194,22 +231,22 @@ namespace eoj12.DCS.Toolkit.Data
             {
                 //find parent mod
                 string searchKey = $@"\{localMod.Title}\";
-                var dbParentMod = LocalDb.Mods.FirstOrDefault(m =>m.IsModDefinition && m.ModEntries.Any(e=>e.Name.ToLower() == "" && e.Path.EndsWith($@"{localMod.Title}/") || e.Path.Contains(searchKey)));
+                var dbParentMod = LocalDb.Mods.FirstOrDefault(m => m.IsModDefinition && m.ModEntries.Any(e => e.Name.ToLower() == "" && e.Path.EndsWith($@"{localMod.Title}/") || e.Path.Contains(searchKey)));
                 var dbMod = LocalDb.Mods.FirstOrDefault(m => !m.IsModDefinition && m.Folder.ToLower() == localMod.Folder.ToLower());
                 if (dbParentMod != null)
                 {
-                    if(dbMod == null)
+                    if (dbMod == null)
                     {
                         localMod.Title = dbParentMod.Title;
-                        localMod.Description =  dbParentMod.Description ;
-                        localMod.Version =dbParentMod.Version ;         
+                        localMod.Description = dbParentMod.Description;
+                        localMod.Version = dbParentMod.Version;
                     }
                     else
                     {
                         dbMod.Title = dbParentMod.Title;
                         dbMod.Description = dbMod != null && string.IsNullOrEmpty(dbMod.Description) ? dbParentMod.Description : dbMod.Description;
                         dbMod.Version = dbParentMod.Version;
-                    }                 
+                    }
                 }
                 if (dbMod == null)
                 {
@@ -224,10 +261,10 @@ namespace eoj12.DCS.Toolkit.Data
             SaveLocalDb();
         }
 
-        private Mod CreateModEntries( string modPath, DirectoryInfo modDirectory)
+        private Mod CreateModEntries(string modPath, DirectoryInfo modDirectory)
         {
 
-            var localMod = new Mod(modPath == Folders.LIVERIES? modDirectory.Parent.Name: modDirectory.Name, modDirectory.Name, "", "", "", modPath, true, false);
+            var localMod = new Mod(modPath == Folders.LIVERIES ? modDirectory.Parent.Name : modDirectory.Name, modDirectory.Name, "", "", "", modPath, true, false);
             var subDirectories = modDirectory.GetDirectories("*.*", SearchOption.AllDirectories);
             ModEntry modEntry = new ModEntry(modDirectory.Name, modDirectory.FullName, true);
             localMod.ModEntries.Add(modEntry);
@@ -247,24 +284,25 @@ namespace eoj12.DCS.Toolkit.Data
             return localMod;
         }
 
-        public string GetSize(long size) {
+        public string GetSize(long size)
+        {
             string sizeString = "";
             if (size > 0)
             {
-               float mb = ((size / 1024) / 1024);
-               sizeString = Math.Round(mb,2) + " MB";
+                float mb = size / 1024 / 1024;
+                sizeString = Math.Round(mb, 2) + " MB";
             }
             return sizeString;
         }
 
 
-        public async Task<Mod> AddMod(Mod mod, IBrowserFile file,  bool udpate)
+        public async Task<Mod> AddMod(Mod mod, IBrowserFile file, bool udpate)
         {
             var dbMod = LocalDb.Mods.FirstOrDefault(m => m.Title.ToLower() == mod.Title.ToLower());
             WebFileInfo fileInfo = null;
-            if(file != null)
+            if (file != null)
             {
-                fileInfo = await GetWebFileInfo(file);               
+                fileInfo = await GetWebFileInfo(file);
             }
             else
             {
@@ -274,50 +312,52 @@ namespace eoj12.DCS.Toolkit.Data
             {
                 if (dbMod == null)
                 {
-                    dbMod = new Mod(mod.Title,"", mod.Description, mod.Version, fileInfo.ResponseUri != null? fileInfo.ResponseUri.ToString():"", mod.TargetFolder, false,true)
+                    dbMod = new Mod(mod.Title, "", mod.Description, mod.Version, fileInfo.ResponseUri != null ? fileInfo.ResponseUri.ToString() : "", mod.TargetFolder, false, true)
                     {
                         Size = GetSize(fileInfo.FileSize),
                         IsModDefinition = true,
                     };
                 }
-                else {
+                else
+                {
                     dbMod.Description = mod.Description;
                     dbMod.Version = mod.Version;
                     dbMod.TargetFolder = mod.TargetFolder;
                     dbMod.IsDownloaded = true;
-                    dbMod.IsPreviousVersion= dbMod.Version.ToLower() == mod.Version.ToLower()?false:true;
+                    dbMod.IsPreviousVersion = dbMod.Version.ToLower() == mod.Version.ToLower() ? false : true;
                     dbMod.IsModDefinition = true;
-                    dbMod.Url = mod.Url;                         
+                    dbMod.Url = mod.Url;
                 }
                 if (udpate)
                 {
-                    dbMod.ModEntries   = ExtractFileFromStream(fileInfo, LocalDb.Settings.DCSSaveGamesPath,mod.TargetFolder);                    
+                    dbMod.ModEntries = ExtractFileFromStream(fileInfo, LocalDb.Settings.DCSSaveGamesPath, mod.TargetFolder);
                     LocalDb.Mods.Add(dbMod);
                     SaveLocalDb();
-                    
+
                 }
                 return mod.CopyTo(dbMod);
-            }    
+            }
             else { return null; };
         }
         public async void UpdateMod(Mod mod)
         {
-            var dbMod = LocalDb.Mods.FirstOrDefault(m => m.Folder.ToLower()== mod.Folder.ToLower()&& !m.IsModDefinition);
-            
+            var dbMod = LocalDb.Mods.FirstOrDefault(m => m.Folder.ToLower() == mod.Folder.ToLower() && !m.IsModDefinition);
+
             if (dbMod != null)
             {
                 if (mod.Version != dbMod.Version)
                 {
-                    LocalDb.Mods.Where(m => m.Title == mod.Title).ToList().ForEach(m => {
+                    LocalDb.Mods.Where(m => m.Title == mod.Title).ToList().ForEach(m =>
+                    {
                         m.Version = mod.Version;
-                    });              
+                    });
                 }
                 dbMod.Description = mod.Description;
             }
             SaveLocalDb();
         }
 
-        public static async Task<WebFileInfo> GetWebFileInfoAndFixGoogleUrl (string url)
+        public static async Task<WebFileInfo> GetWebFileInfoAndFixGoogleUrl(string url)
         {
             var webFileInfo = await GetWebFileInfo(url);
             var googleUrl = await FixGoogleUrl(webFileInfo);
@@ -331,7 +371,7 @@ namespace eoj12.DCS.Toolkit.Data
             WebFileInfo modInfo = null;
             //var reader = await new StreamReader(file.OpenReadStream()).ReadToEndAsync();
             //maxAllowedSize : 3Gb
-         
+
             modInfo = new WebFileInfo(file.Name, Path.GetExtension(file.Name), file.Size, file.LastModified.LocalDateTime, file.ContentType, null);
             var memoryStream = new MemoryStream();
             await file.OpenReadStream(maxAllowedSize: 3221225472, cancellationToken: default).CopyToAsync(memoryStream);
@@ -363,16 +403,16 @@ namespace eoj12.DCS.Toolkit.Data
                 DateTime modificationDate;
                 DateTime.TryParse(response.Headers["Last-Modified"], out modificationDate);
 
-                modInfo = new WebFileInfo(fileName, fileExtension, fileSize, modificationDate, response.ContentType,new Uri(url));
+                modInfo = new WebFileInfo(fileName, fileExtension, fileSize, modificationDate, response.ContentType, new Uri(url));
             }
             response.Close();
             return modInfo;
         }
 
-        public static async Task <string> FixGoogleUrl(WebFileInfo webFileInfo)
+        public static async Task<string> FixGoogleUrl(WebFileInfo webFileInfo)
         {
 
-            string returnUrl= webFileInfo.ResponseUri.ToString();
+            string returnUrl = webFileInfo.ResponseUri.ToString();
             if (webFileInfo.ContentType == "text/html; charset=utf-8" && webFileInfo.ResponseUri.Host == "drive.google.com")// && webFileInfo.ResponseUri.ToString().Contains("sharing"))
             {
 
@@ -381,7 +421,7 @@ namespace eoj12.DCS.Toolkit.Data
                 if (ids.Length > 0 && ids.Length > 5)
                 {
                     documentId = ids[5].Trim();///.Replace("uc?id=","");
-                    if(documentId.IndexOf("?") > -1)
+                    if (documentId.IndexOf("?") > -1)
                     {
                         var parsed = HttpUtility.ParseQueryString(documentId);
                         documentId = parsed["id"];
@@ -389,7 +429,7 @@ namespace eoj12.DCS.Toolkit.Data
 
 
                 }
-                if (string.IsNullOrEmpty(documentId)) 
+                if (string.IsNullOrEmpty(documentId))
                 {
                     var qs = webFileInfo.ResponseUri.Query; //"userID=16555&gameID=60&score=4542.122&time=343114";
                     var parsed = HttpUtility.ParseQueryString(qs);
@@ -404,8 +444,8 @@ namespace eoj12.DCS.Toolkit.Data
                 {
                     confirmToken = content.Substring(intTokenStart, intTokenEnd - intTokenStart).Replace("confirm=t&amp;uuid=", "");
                 }
-                returnUrl =string.Format("https://drive.google.com/uc?export=download&id={0}&confirm=t&uuid={1}", documentId, confirmToken);       
-            }     
+                returnUrl = string.Format("https://drive.google.com/uc?export=download&id={0}&confirm=t&uuid={1}", documentId, confirmToken);
+            }
             return returnUrl;
         }
 
@@ -466,9 +506,10 @@ namespace eoj12.DCS.Toolkit.Data
             }
         }
 
-        public void DisableMod(Mod mod) {
+        public void DisableMod(Mod mod)
+        {
 
-            var dbMod = LocalDb.Mods.FirstOrDefault(m => m.Folder.ToLower()== mod.Folder.ToLower()&& !m.IsModDefinition );
+            var dbMod = LocalDb.Mods.FirstOrDefault(m => m.Folder.ToLower() == mod.Folder.ToLower() && !m.IsModDefinition);
             var directoryEntries = dbMod.ModEntries.Where(e => e.IsDirectory).OrderBy(e => e.Path).ToList();
             foreach (var modEntry in directoryEntries)
             {
@@ -485,8 +526,9 @@ namespace eoj12.DCS.Toolkit.Data
                 var tempPath = modEntry.Path.Replace(LocalDb.Settings.DCSSaveGamesPath, ModManagerTempPath);
                 try
                 {
-                    File.Move(modEntry.Path, tempPath,true);
-                }catch (Exception ex)
+                    File.Move(modEntry.Path, tempPath, true);
+                }
+                catch (Exception ex)
                 {
                     //A mod directory can be part of many mods
                 }
@@ -510,7 +552,7 @@ namespace eoj12.DCS.Toolkit.Data
         public void EnableMod(Mod mod)
         {
 
-            var dbMod = LocalDb.Mods.FirstOrDefault(m => m.Folder.ToLower()== mod.Folder.ToLower()&& !m.IsModDefinition);
+            var dbMod = LocalDb.Mods.FirstOrDefault(m => m.Folder.ToLower() == mod.Folder.ToLower() && !m.IsModDefinition);
             var directoryEntries = dbMod.ModEntries.Where(e => e.IsDirectory).OrderBy(e => e.Path).ToList();
             foreach (var modEntry in directoryEntries)
             {
@@ -518,7 +560,7 @@ namespace eoj12.DCS.Toolkit.Data
                 if (!directoryInfo.Exists)
                 {
                     Directory.CreateDirectory(modEntry.Path);
-                }             
+                }
             }
             foreach (var modEntry in dbMod.ModEntries.Where(e => e.IsDirectory == false))
             {
@@ -526,7 +568,8 @@ namespace eoj12.DCS.Toolkit.Data
                 try
                 {
                     File.Move(tempPath, modEntry.Path, true);
-                }catch (Exception ex)
+                }
+                catch (Exception ex)
                 {
                     //A mod directory can be part of many mods
                 }
@@ -539,8 +582,8 @@ namespace eoj12.DCS.Toolkit.Data
                 if (directoryInfo.Exists && directoryInfo.GetFiles().Length == 0)
                 {
                     if (directoryInfo.GetDirectories().Count() == 0)
-                        Directory.Delete(tempPath);      
-                }             
+                        Directory.Delete(tempPath);
+                }
             }
 
             dbMod.IsDisable = false;
@@ -549,7 +592,7 @@ namespace eoj12.DCS.Toolkit.Data
         }
 
 
-        public async Task<WebFileInfo> DownloadFileAsync( string url)
+        public async Task<WebFileInfo> DownloadFileAsync(string url)
         {
             var modInfo = await GetWebFileInfoAndFixGoogleUrl(url);// GetWebFileInfo(url);//
             HttpClient client = new HttpClient();
@@ -560,16 +603,18 @@ namespace eoj12.DCS.Toolkit.Data
 
         }
 
-        public   List<ModEntry> ExtractFileFromStream(WebFileInfo webFileInfo, string saveGamePath, string targetFolder)
+        public List<ModEntry> ExtractFileFromStream(WebFileInfo webFileInfo, string saveGamePath, string targetFolder)
         {
-            List<ModEntry> entries = null ;
-            if (IsValidZipFile(webFileInfo.Stream)) {
-                entries =ExtractZipFromStream(webFileInfo.Stream, saveGamePath, targetFolder);
+            List<ModEntry> entries = null;
+            if (IsValidZipFile(webFileInfo.Stream))
+            {
+                entries = ExtractZipFromStream(webFileInfo.Stream, saveGamePath, targetFolder);
             }
-            else if(webFileInfo.FileExtension ==".rar") { //(RarArchive.IsRarFile(stream)){
+            else if (webFileInfo.FileExtension == ".rar")
+            { //(RarArchive.IsRarFile(stream)){
                 Guid guid = Guid.NewGuid();
-                var fileStream =ConvertMemoryStreamToFileStream((MemoryStream)webFileInfo.Stream, @$"{ModManagerTempPath}\{guid}");
-                entries =ExtractRarFromFileInfo(new FileInfo(@$"{ModManagerTempPath}\{guid}"), saveGamePath, targetFolder);
+                var fileStream = ConvertMemoryStreamToFileStream((MemoryStream)webFileInfo.Stream, @$"{ModManagerTempPath}\{guid}");
+                entries = ExtractRarFromFileInfo(new FileInfo(@$"{ModManagerTempPath}\{guid}"), saveGamePath, targetFolder);
             }
             else
             {
@@ -595,7 +640,7 @@ namespace eoj12.DCS.Toolkit.Data
                             IsDirectory = string.IsNullOrEmpty(entry.Name) ? true : false,
                             CompressedLength = entry.CompressedLength,
                             //Path = $@"{outputPath}\{entry.FullName}",
-                            Path = TrimPath(outputPath,targetFolder,entry.FullName),
+                            Path = TrimPath(outputPath, targetFolder, entry.FullName),
                             LastWriteTime = entry.LastWriteTime,
                             Length = entry.Length
                         };
@@ -623,13 +668,12 @@ namespace eoj12.DCS.Toolkit.Data
                 return entries;
             }
         }
-  
+
         public static List<ModEntry> ExtractRarFromFileInfo(FileInfo fileInfo, string outputPath, string targetFolder)
         {
-           
+
             EnsureFolder(outputPath);
             var modFolder = outputPath.ToLower().Split("\\").LastOrDefault();
-            var Z = "".ToLower().Split("\\").FirstOrDefault() == modFolder ? "".Replace("\\modFolder", "") : "";
             List<ModEntry> entries = new List<ModEntry>();
             using (var archive = RarArchive.Open(fileInfo))
             {
@@ -647,7 +691,7 @@ namespace eoj12.DCS.Toolkit.Data
                             Length = entry.Size
                         };
                         entries.Add(modEntry);
-                       
+
                         if (!entry.IsDirectory)
                         {
                             string fileName = Path.GetFileName(modEntry.Path);
@@ -659,7 +703,7 @@ namespace eoj12.DCS.Toolkit.Data
                             {
                                 ExtractFullPath = true,
                                 Overwrite = true,
-                                
+
                             });
                         }
                     }
@@ -672,25 +716,26 @@ namespace eoj12.DCS.Toolkit.Data
         //C:\Users\xx\Saved Games\DCS.openbetaModManager2\Liveries\  \Liveries\T-45\CT-155201
         //C:\Users\xx\Saved Games\DCS.openbetaModManager3\           \425 Warthog Liveries Pack_02\Liveries\A-10CII\RCAF_425_LowVis_DarkGreenCamo
         //C:\Users\xx\Saved Games\DCS.openbetaModManager3\           \425 Warthog Liveries Pack_02\Mods\aircraft\A-10CII\RCAF_425_LowVis_DarkGreenCamo
-        private static string TrimPath(string outputPath, string targetFolder, string modEntryPath) {
-            var modEntryPathFix = modEntryPath.Replace("/", "\\").ToLower();
-            var retval = $@"{outputPath}\{modEntryPathFix}".ToLower();
-           
-            if (targetFolder != Names.Folders.ROOT)
-            {  
-                var targetFolderIndex = modEntryPathFix.IndexOf(targetFolder);
-                var modFolderIndex = modEntryPathFix.IndexOf(Names.Folders.MODS);
-                if (targetFolderIndex > 0)
-                    retval = outputPath + targetFolder + modEntryPathFix.Substring(targetFolderIndex + targetFolder.Length);
-                else if (modFolderIndex > 0)
-                    retval = outputPath + targetFolder + modEntryPathFix.Substring(modFolderIndex + Names.Folders.MODS.Length);
-            }
-            else { 
-                retval = $@"{outputPath}\{modEntryPathFix}";
-            }
+        private static string TrimPath(string outputPath, string targetFolder, string modEntryPath)
+        {
 
 
-            return retval;
+            var modEntryPathFix = modEntryPath.Replace("/", "\\");
+            if (modEntryPathFix.IndexOf("\\") != 0)
+                modEntryPathFix = modEntryPathFix.Insert(0, "\\");
+            var retVal = $@"{outputPath}{targetFolder}\{modEntryPathFix}";
+
+            if (targetFolder != Folders.ROOT)
+            {
+                var targetFolderIndex = modEntryPathFix.ToLower().IndexOf(targetFolder);
+                var modFolderIndex = modEntryPathFix.ToLower().IndexOf(Folders.MODS);
+                if (targetFolderIndex >= 0)
+                    retVal = outputPath + targetFolder + modEntryPathFix.Substring(targetFolderIndex + targetFolder.Length);
+                else if (modFolderIndex >= 0)
+                    retVal = outputPath + targetFolder + modEntryPathFix.Substring(modFolderIndex + Folders.MODS.Length);
+            }
+
+            return retVal;
 
         }
 
@@ -711,7 +756,7 @@ namespace eoj12.DCS.Toolkit.Data
                 memoryStream.Seek(0, SeekOrigin.Begin);
                 memoryStream.CopyTo(fileStream);
                 return fileStream;
-            }       
+            }
         }
         private static bool IsValidZipFile(Stream stream)
         {
@@ -723,13 +768,13 @@ namespace eoj12.DCS.Toolkit.Data
             byte[] buffer = new byte[4];
             stream.Read(buffer, 0, buffer.Length);
 
-            bool retVal= BitConverter.ToUInt32(buffer, 0) == 0x04034b50;
+            bool retVal = BitConverter.ToUInt32(buffer, 0) == 0x04034b50;
             return retVal;
         }
 
         public void SaveLocalDb()
         {
-            eoj12.DCS.Toolkit.Data.LocalDb.SerializeObject(LocalDb, DbPath);
+            LocalDb.SerializeObject(LocalDb, DbPath);
         }
     }
 }

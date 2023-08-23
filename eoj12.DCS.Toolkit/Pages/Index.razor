@@ -1,10 +1,12 @@
 ﻿@page "/"
 @using eoj12.DCS.Toolkit.Data;
 @using eoj12.DCS.Toolkit.Models;
+@using eoj12.DCS.Toolkit.Services;
 @using System.Net;
 @using System.Net.Http
 @using System.IO
 @using System.Threading.Tasks
+
 
 <ModsDataGrid Mods="mods"  ShowScanMod="true" ShowIsDownloadButton=false ShowIsEnableButton="true" ShowModTagetFolder=true ShowModUrl=false></ModsDataGrid>
 @code {

@@ -1,4 +1,5 @@
-﻿@using eoj12.DCS.Toolkit.Data;
+﻿@using eoj12.DCS.Toolkit.Services;
+@using eoj12.DCS.Toolkit.Data;
 @using eoj12.DCS.Toolkit.Models;
 @using System.Net;
 @using System.Net.Http
@@ -141,7 +142,22 @@
             </EditTemplate>
         </RadzenDataGridColumn>
         }
-       
+        @if (ShowIsDownloadButton & _modToInsert == null)
+        {
+            <RadzenDataGridColumn TItem="Mod" Context="mod" Filterable="false" Sortable="false" TextAlign="TextAlign.Right" Width="55px">
+                <Template Context="mod">
+
+                    @if (mod.IsPotentialMatch)
+                    {
+                        <RadzenButton Icon="link" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => Match(mod))" @onclick:stopPropagation="true" />
+                    }
+                 @*   else
+                    {
+                        <RadzenButton Icon="download" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => DownloadMod(mod))" @onclick:stopPropagation="true" />
+                    }*@
+                </Template>
+            </RadzenDataGridColumn>
+        }
         @if (ShowIsDownloadButton & _modToInsert ==null ){
         <RadzenDataGridColumn TItem="Mod" Context="mod" Filterable="false" Sortable="false" TextAlign="TextAlign.Right" Width="55px">
             <Template Context="mod">
@@ -482,7 +498,23 @@
             await ShowErrorMessages(ex.Message);
         }
     }
+    private async Task Match(Mod mod)
+    {
+        try
+        {
+ 
+            modManagerService.Match(mod);
+            mod.IsPotentialMatch = false;
+            mod.IsDownloaded = true;
+                       
+            await _modsGrid.Reload();
 
+        }
+        catch (Exception ex)
+        {
+            await ShowErrorMessages(ex.Message);
+        }
+    }
     private async Task DisableAll()
     {
         try

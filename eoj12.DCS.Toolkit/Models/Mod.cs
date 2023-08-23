@@ -21,6 +21,8 @@ namespace eoj12.DCS.Toolkit.Models
         public bool IsPreviousVersion { get; set; }
         public bool IsDisable { get; set; }
         public bool IsModDefinition { get; set; }
+        public bool IsPotentialMatch { get; set; }
+        public Mod  PotentialMatch { get; set; }
 
         private List<ModEntry> _modEntries;
         public List<ModEntry> ModEntries
@@ -99,7 +101,7 @@ namespace eoj12.DCS.Toolkit.Models
 
         private static Mod GetModCopy(Mod mod, bool includeEntries, bool includeStatusProperties)
         {
-            var retVal =new Mod()
+            var retVal = new Mod()
             {
                 Description = mod.Description,
                 ModEntries = includeEntries ? mod.ModEntries : null,
@@ -110,7 +112,9 @@ namespace eoj12.DCS.Toolkit.Models
                 FolderPath = mod.FolderPath,
                 Version = mod.Version,
                 Folder = mod.Folder,
-                IsModDefinition = mod.IsModDefinition,   
+                IsModDefinition = mod.IsModDefinition,
+                IsPotentialMatch = mod.IsPotentialMatch,
+                PotentialMatch = mod.IsPotentialMatch ? GetModCopy(mod.PotentialMatch, false, false) : null,
             };
             if (includeStatusProperties)
             {
