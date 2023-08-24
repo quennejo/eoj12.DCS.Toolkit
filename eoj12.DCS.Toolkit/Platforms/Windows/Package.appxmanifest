@@ -6,13 +6,13 @@
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
   IgnorableNamespaces="uap rescap">
 
-  <Identity Name="maui-package-name-placeholder" Publisher="CN=eoj.12" Version="0.1.1.0" />
+  <Identity Name="63216eoj12.DCSToolkit" Publisher="CN=F3D6C5E7-454C-4F3F-BA1B-077C91BA2984" Version="1.1.8.0"  />
 
-  <mp:PhoneIdentity PhoneProductId="4F9CD795-15B0-4D14-B147-2863EB82DDDA" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
+  <mp:PhoneIdentity PhoneProductId="1b935dbd-3078-4bea-a2f7-176447a19f3a" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
   <Properties>
-    <DisplayName>$placeholder$</DisplayName>
-    <PublisherDisplayName>User Name</PublisherDisplayName>
+    <DisplayName>DCS Toolkit</DisplayName>
+    <PublisherDisplayName>eoj12</PublisherDisplayName>
     <Logo>$placeholder$.png</Logo>
   </Properties>
 
@@ -28,7 +28,7 @@
   <Applications>
     <Application Id="App" Executable="$targetnametoken$.exe" EntryPoint="$targetentrypoint$">
       <uap:VisualElements
-        DisplayName="$placeholder$"
+        DisplayName="DCS Toolkit"
         Description="$placeholder$"
         Square150x150Logo="$placeholder$.png"
         Square44x44Logo="$placeholder$.png"

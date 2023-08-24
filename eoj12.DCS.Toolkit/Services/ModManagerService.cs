@@ -121,7 +121,11 @@ namespace eoj12.DCS.Toolkit.Services
                     squadronMod.IsDisable = false;
                     squadronMod.IsPreviousVersion = false;
                     squadronMod.IsDownloaded = false;
-                    var potentialMatch =dbModDefinitionList.FirstOrDefault(m =>( m.Title.ToLower().Contains(squadronMod.Title.ToLower()) || squadronMod.Title.ToLower().Contains(m.Title.ToLower())) && m.TargetFolder.ToLower() == squadronMod.TargetFolder.ToLower() && !m.IsModDefinition);
+                    var potentialMatch =dbModDefinitionList.FirstOrDefault(m =>( m.Title.ToLower().Contains(squadronMod.Title.ToLower()) 
+                                                                                || squadronMod.Title.ToLower().Contains(m.Title.ToLower())) 
+                                                                                && m.TargetFolder.ToLower() == squadronMod.TargetFolder.ToLower()
+                                                                                && m.Version.ToLower() != squadronMod.Version.ToLower()
+                                                                                && !m.IsModDefinition);
                     if (potentialMatch != null)
                     {
                         squadronMod.IsPotentialMatch = true;
@@ -160,16 +164,18 @@ namespace eoj12.DCS.Toolkit.Services
                 }
 
             }
-            mods.OrderBy(m => m.Title).ToList();
+            mods=mods.OrderBy(m => m.Title).ToList();
             return mods;
         }
 
         public async void Match(Mod mod)
         {
-            var dbMod = LocalDb.Mods.FirstOrDefault(m => m.Title == mod.PotentialMatch.Title && m.TargetFolder.ToLower() == mod.PotentialMatch.TargetFolder.ToLower());
-
+            var dbMod = LocalDb.Mods.FirstOrDefault(m =>!m.IsModDefinition &&  m.Title == mod.PotentialMatch.Title && m.TargetFolder.ToLower() == mod.PotentialMatch.TargetFolder.ToLower());
+            
             if (dbMod != null)
             {
+        
+                dbMod.Title= mod.Title;
                 dbMod.Description = mod.Description;
                 dbMod.Version = mod.Version;
                 dbMod.IsDownloaded = true;
@@ -178,6 +184,7 @@ namespace eoj12.DCS.Toolkit.Services
                 dbMod.Url = mod.Url;
                 mod.IsPotentialMatch = false;
                 mod.PotentialMatch = null;
+                
             }
             SaveLocalDb();
         }
@@ -227,25 +234,26 @@ namespace eoj12.DCS.Toolkit.Services
                     }
                 }
             }
+ 
             foreach (var localMod in localMods)
             {
                 //find parent mod
                 string searchKey = $@"\{localMod.Title}\";
-                var dbParentMod = LocalDb.Mods.FirstOrDefault(m => m.IsModDefinition && m.ModEntries.Any(e => e.Name.ToLower() == "" && e.Path.EndsWith($@"{localMod.Title}/") || e.Path.Contains(searchKey)));
-                var dbMod = LocalDb.Mods.FirstOrDefault(m =>  m.Folder.ToLower() == localMod.Folder.ToLower());//!m.IsModDefinition &&
-                if (dbParentMod != null)
+                var dbDefinitionMod = LocalDb.Mods.FirstOrDefault(m => m.IsModDefinition && m.ModEntries.Any(e => e.Name.ToLower() == "" && e.Path.EndsWith($@"{localMod.Title}/") || e.Path.Contains(searchKey)));
+                var dbMod = LocalDb.Mods.FirstOrDefault(m => !m.IsModDefinition && m.Folder.ToLower() == localMod.Folder.ToLower());
+                if (dbDefinitionMod != null)
                 {
                     if (dbMod == null)
                     {
-                        localMod.Title = dbParentMod.Title;
-                        localMod.Description = dbParentMod.Description;
-                        localMod.Version = dbParentMod.Version;
+                        localMod.Title = dbDefinitionMod.Title;
+                        localMod.Description = dbDefinitionMod.Description;
+                        localMod.Version = dbDefinitionMod.Version;
                     }
                     else
                     {
-                        dbMod.Title = dbParentMod.Title;
-                        dbMod.Description = dbMod != null && string.IsNullOrEmpty(dbMod.Description) ? dbParentMod.Description : dbMod.Description;
-                        dbMod.Version = dbParentMod.Version;
+                        dbMod.Title = dbDefinitionMod.Title;
+                        dbMod.Description = string.IsNullOrEmpty(dbMod.Description) ? dbDefinitionMod.Description : dbMod.Description;
+                        dbMod.Version = dbDefinitionMod.Version;
                     }
                 }
                 if (dbMod == null)
@@ -778,3 +786,4 @@ namespace eoj12.DCS.Toolkit.Services
         }
     }
 }
+

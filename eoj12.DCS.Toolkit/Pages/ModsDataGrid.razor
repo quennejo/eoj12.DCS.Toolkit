@@ -169,11 +169,11 @@
                     }
                     else if (mod.IsPreviousVersion)
                     {
-                        <RadzenButton Icon="update" ButtonStyle="ButtonStyle.Info" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => UpdateMod(mod))" @onclick:stopPropagation="true" />
+                        <RadzenButton Icon="update" ButtonStyle="ButtonStyle.Info" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => UpdateMod(mod))" @onclick:stopPropagation="true" MouseEnter="@(args => ShowTooltip(args, new TooltipOptions(){ Text = "Update Mod to latest version",Position=TooltipPosition.Top}))" />
                     }
                     else
                     {
-                        <RadzenButton Icon="download" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => DownloadMod(mod))" @onclick:stopPropagation="true" />
+                        <RadzenButton Icon="download" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => DownloadMod(mod))" @onclick:stopPropagation="true" MouseEnter="@(args => ShowTooltip(args, new TooltipOptions(){ Text = "Downlaod Mod",Position=TooltipPosition.Top}))" />
                     }                        
             </Template>
         </RadzenDataGridColumn>
@@ -195,24 +195,23 @@
         }
         <RadzenDataGridColumn TItem="Mod" Context="mod" Filterable="false" Sortable="false" TextAlign="TextAlign.Right" Width="55px">
             <Template Context="mod">
-                <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => EditRow(mod))" @onclick:stopPropagation="true" />
+                <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => EditRow(mod))" @onclick:stopPropagation="true" MouseEnter="@(args => ShowTooltip(args, new TooltipOptions(){ Text = "Edit",Position=TooltipPosition.Top}))" />
             </Template>
             <EditTemplate Context="mod">
-                <RadzenButton Icon="save" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@((args) => SaveRow(mod))">
-                </RadzenButton>
+                <RadzenButton Icon="save" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => SaveRow(mod))" @onclick:stopPropagation="true" MouseEnter="@(args => ShowTooltip(args, new TooltipOptions(){ Text = "Save",Position=TooltipPosition.Top}))" />
             </EditTemplate>
         </RadzenDataGridColumn>
         <RadzenDataGridColumn TItem="Mod" Context="mod" Filterable="false" Sortable="false" TextAlign="TextAlign.Right" Width="55px">
             <Template Context="mod">
                 @if ((!mod.IsDisable && (mod.IsDownloaded || mod.IsPreviousVersion)) || DefinitionMode)
                     {
-                    <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Variant="Variant.Flat" Shade="Shade.Lighter" Size="ButtonSize.Medium" class="my-1 ms-1" Click="@(args => DeleteRow(mod))" @onclick:stopPropagation="true" />
+                    <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Variant="Variant.Flat" Shade="Shade.Lighter" Size="ButtonSize.Medium" class="my-1 ms-1" Click="@(args => DeleteRow(mod))" @onclick:stopPropagation="true" MouseEnter="@(args => ShowTooltip(args, new TooltipOptions(){ Text = "Delete Mod",Position=TooltipPosition.Top}))" />
                     }
             </Template>
             <EditTemplate Context="mod">
                 <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" class="my-1 ms-1" Click="@((args) => CancelEdit(mod))">
                 </RadzenButton>
-                <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Variant="Variant.Flat" Shade="Shade.Lighter" Size="ButtonSize.Medium" class="my-1 ms-1" Click="@(args => DeleteRow(mod))">
+                <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Variant="Variant.Flat" Shade="Shade.Lighter" Size="ButtonSize.Medium" class="my-1 ms-1" Click="@(args => DeleteRow(mod))" MouseEnter="@(args => ShowTooltip(args, new TooltipOptions(){ Text = "Delete Mod",Position=TooltipPosition.Top}))">
                 </RadzenButton>
             </EditTemplate>
         </RadzenDataGridColumn>
@@ -387,6 +386,28 @@
         }
     }
 
+    //create  function to download file definition. The function must be syncro
+    
+
+
+    // private   void DownloadFileDefinitionFromFile(InputFileChangeEventArgs e)
+    // {
+    //     try
+    //     {
+    //         ShowBusyDialog("Loading File Definition... ");
+          
+    //         Task<List<Mod>> downloadTask = Task.Run(async () => await modManagerService.DownloadFileDefinitionAsync(e.File.OpenReadStream()));
+    //         downloadTask.Wait(); // Wait for the task to complete
+    //         List<Mod> mods = downloadTask.Result;
+    //         StateHasChanged();
+    //         CloseBusyDialog();
+    //     }
+    //     catch (Exception ex)
+    //     {
+    //         ;
+    //         //     ShowErrorMessages("File not supported. Please select .json file").;
+    //     }
+    // }
     private async void DownloadFileDefinitionFromFile(InputFileChangeEventArgs e)
     {
         try
@@ -469,7 +490,7 @@
     {
         try
         {
-            ShowBusyDialog($"Downloading & Updating {modDefinition.Title} ... ");
+            ShowBusyDialog($"Downloading {modDefinition.Title} ... ");
             modDefinition.IsDownloading = true;
             var url = modDefinition.Url.ToString();
             var webFileInfo = await modManagerService.DownloadFileAsync(url);
@@ -530,7 +551,7 @@
                 </RadzenStack>
             </RadzenStack>
             </RadzenStack>);
-            if (result)
+            if (result != null && result==true)
             {
                 modManagerService.Match(mod);
                 mod.IsPotentialMatch = false;
@@ -681,21 +702,22 @@
 
     async Task ShowBusyDialog(string withMessageAsString = "Loading...")
     {
-
-            await BusyDialog(withMessageAsString);
-        
+        await BusyDialog(withMessageAsString);     
     }
 
     async Task BusyDialog(string message)
     {
-        await DialogService.OpenAsync("", ds =>
+        await DialogService.OpenAsync("Please Wait...", ds =>
     @<div>
         <div class="row">
-            <div class="col-md-12">
+            <div class="col">
+                <RadzenProgressBarCircular ProgressBarStyle="ProgressBarStyle.Primary" Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Large" />
+            </div>
+            <div class="col">
                 @message
             </div>
         </div>
-    </div>, new DialogOptions() { ShowTitle = false, Style = "min-height:auto;min-width:auto;width:auto" });
+    </div>, new DialogOptions() { ShowTitle = true});
         await Task.Delay(2000);
     }
     async Task CloseBusyDialog()
