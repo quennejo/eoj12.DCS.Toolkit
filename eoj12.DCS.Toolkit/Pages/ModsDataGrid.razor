@@ -8,7 +8,8 @@
 
 @inject DialogService DialogService
 @inject NavigationManager NavigationManager
-<RadzenDialog />
+@inject TooltipService tooltipService
+@*<RadzenDialog />*@
 
 @if (ShowLoadFileDefinition)
 {
@@ -149,12 +150,8 @@
 
                     @if (mod.IsPotentialMatch)
                     {
-                        <RadzenButton Icon="link" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => Match(mod))" @onclick:stopPropagation="true" />
+                        <RadzenButton Icon="auto_fix_normal" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat" Size="ButtonSize.Medium" MouseEnter="@(args => ShowTooltip(args, new TooltipOptions(){ Text = "Match",Position=TooltipPosition.Top}))"  Click="@(args => Match(mod))" @onclick:stopPropagation="true" />
                     }
-                 @*   else
-                    {
-                        <RadzenButton Icon="download" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => DownloadMod(mod))" @onclick:stopPropagation="true" />
-                    }*@
                 </Template>
             </RadzenDataGridColumn>
         }
@@ -502,12 +499,46 @@
     {
         try
         {
- 
-            modManagerService.Match(mod);
-            mod.IsPotentialMatch = false;
-            mod.IsDownloaded = true;
-                       
-            await _modsGrid.Reload();
+            var result = await DialogService.OpenAsync("Confirm match", ds =>
+        @<RadzenStack Gap="1.5rem">
+            <p>We have found a potential match on your local drive that could fit the squadron mod definition.</p>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Description</th>
+                        <th>TargetFolder</th>
+                        <th>Version</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    <tr>
+                        <td>@mod.PotentialMatch.Title</td>
+                        <td>@mod.PotentialMatch.Description</td>
+                        <td>@mod.PotentialMatch.TargetFolder</td>
+                        <td>@mod.PotentialMatch.Version</td>
+                    </tr>
+
+                </tbody>
+            </table>
+
+            <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+                <RadzenStack Orientation="Orientation.Horizontal">
+                    <RadzenButton Text="Confirm" Click="() => ds.Close(true)" />
+                    <RadzenButton Text="Cancel" Click="() => ds.Close(false)" ButtonStyle="ButtonStyle.Light" />
+                </RadzenStack>
+            </RadzenStack>
+            </RadzenStack>);
+            if (result)
+            {
+                modManagerService.Match(mod);
+                mod.IsPotentialMatch = false;
+                mod.IsDownloaded = true;
+                modManagerService.ScanMods();
+                await _modsGrid.Reload();
+                StateHasChanged();
+            }
 
         }
         catch (Exception ex)
@@ -677,5 +708,9 @@
         DialogService.Alert(errorMessage, "Error", new AlertOptions() { OkButtonText = "Ok" });
 
     }
+    void ShowTooltip(ElementReference elementReference, TooltipOptions options = null) => tooltipService.Open(elementReference, options.Text, options);
 
+    
 }
+
+

@@ -43,6 +43,7 @@
         {
             folderPath = folder.Folder.Path;
             modManagerService.SaveSettings(new Models.Settings() { DCSSaveGamesPath = folderPath });
+            modManagerService.ScanMods();
             StateHasChanged();
         }
 

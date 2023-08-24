@@ -232,7 +232,7 @@ namespace eoj12.DCS.Toolkit.Services
                 //find parent mod
                 string searchKey = $@"\{localMod.Title}\";
                 var dbParentMod = LocalDb.Mods.FirstOrDefault(m => m.IsModDefinition && m.ModEntries.Any(e => e.Name.ToLower() == "" && e.Path.EndsWith($@"{localMod.Title}/") || e.Path.Contains(searchKey)));
-                var dbMod = LocalDb.Mods.FirstOrDefault(m => !m.IsModDefinition && m.Folder.ToLower() == localMod.Folder.ToLower());
+                var dbMod = LocalDb.Mods.FirstOrDefault(m =>  m.Folder.ToLower() == localMod.Folder.ToLower());//!m.IsModDefinition &&
                 if (dbParentMod != null)
                 {
                     if (dbMod == null)
