@@ -3,7 +3,14 @@ DCS.Toolkit
 
 DCS Toolkit is utility software for the DCS World flight simulator. In its first version it allows you to manage your mods (Aircraft, Tech and livery). Other features are to come.
 
-<img width="1418" alt="image" src="https://github.com/quennejo/eoj12.DCS.Toolkit/assets/3663370/dc8288c8-acd6-4eb9-8301-c12d4b70911f">
+Features :
+-Download and Install Mods
+-Update Mods
+-Add Mods
+-Delete Modd
+-Disable and Enable Mods
 
+<img width="1429" alt="image" src="https://github.com/quennejo/eoj12.DCS.Toolkit/assets/3663370/7c7becda-53fa-4ce9-9b93-5828b360fff3">
+<br/><br/>
+<img width="1429" alt="image" src="https://github.com/quennejo/eoj12.DCS.Toolkit/assets/3663370/6af9a8dc-dbb4-4066-b90d-cbbdc706136a">
 
-<img width="1881" alt="image" src="https://github.com/quennejo/eoj12.DCS.Toolkit/assets/3663370/de1d0cd4-b086-4507-a766-6746b7dda074">
