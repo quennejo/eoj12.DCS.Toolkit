@@ -39,7 +39,9 @@ namespace eoj12.DCS.Toolkit.Services
             set { _localDb = value; }
         }
 
-
+        /// <summary>
+        /// Constructor
+        /// </summary>
         public ModManagerService()
         {
             DbPath = @$"{FileSystem.Current.AppDataDirectory}\\localDb.json";
@@ -51,8 +53,11 @@ namespace eoj12.DCS.Toolkit.Services
                 EnsureDirectory(ModManagerTempPath);
             }
         }
-
-        private void EnsureDirectory(string path)
+        /// <summary>
+        /// ensure directory exists, if not create it
+        /// </summary>
+        /// <param name="path"></param>
+        private static void EnsureDirectory(string path)
         {
             // Check if directory exists
             if (!Directory.Exists(path))
@@ -61,7 +66,11 @@ namespace eoj12.DCS.Toolkit.Services
             }
 
         }
-
+        /// <summary>
+        /// Get mods from local db
+        /// </summary>
+        /// <param name="excludeModDefinitions"></param>
+        /// <returns></returns>
         public async Task<List<Mod>> GetMods(bool excludeModDefinitions)
         {
 
@@ -71,10 +80,20 @@ namespace eoj12.DCS.Toolkit.Services
 
 
         }
+        /// <summary>
+        /// Get settings from local db
+        /// </summary>
+        /// <returns></returns>
         public async Task<Settings> GetSettings()
         {
             return LocalDb.Settings;
         }
+
+        /// <summary>
+        /// Save settings to local db
+        /// </summary>
+        /// <param name="settings"></param>
+        /// <exception cref="Exception"></exception>
         public async void SaveSettings(Settings settings)
         {
             if (Directory.Exists(settings.DCSSaveGamesPath))
@@ -90,12 +109,21 @@ namespace eoj12.DCS.Toolkit.Services
                 throw new Exception("DCS Save game path does not exist!");
             }
         }
+
+        /// <summary>
+        /// Delete local db
+        /// </summary>
         public async void DeleteLocalDb()
         {
             File.Delete(DbPath);
             LocalDb = null;
         }
 
+        /// <summary>
+        /// Download file from url
+        /// </summary>
+        /// <param name="url"></param>
+        /// <returns></returns>
         public async Task<List<Mod>> DownloadFileDefinitionAsync(string url)
         {
 
@@ -104,6 +132,11 @@ namespace eoj12.DCS.Toolkit.Services
             return await DownloadFileDefinitionAsync(webFileInfo.Stream);
         }
 
+        /// <summary>
+        /// Download file definition from stream    
+        /// </summary>
+        /// <param name="stream"></param>
+        /// <returns></returns>
         public async Task<List<Mod>> DownloadFileDefinitionAsync(Stream stream)
         {
             List<Mod> mods = new List<Mod>();
@@ -160,6 +193,8 @@ namespace eoj12.DCS.Toolkit.Services
                     mod.TargetFolder = squadronMod.TargetFolder;
                     mod.Description = squadronMod.Description;
                     mod.IsModDefinition = true;
+                    mod.IsPotentialMatch = false;
+                    mod.PotentialMatch = null;
                     mods.Add(mod);
                 }
 
@@ -168,6 +203,37 @@ namespace eoj12.DCS.Toolkit.Services
             return mods;
         }
 
+        /// <summary>
+        /// Download or Update a mod from a url
+        /// </summary>
+        /// <param name="mod"></param>
+        /// <param name="Update">Fals by Default</param>
+        /// <returns></returns>
+        public async Task<Mod> DownloadMod(Mod mod, bool Update= false) {
+
+
+            var url = mod.Url.ToString();
+            var webFileInfo = await DownloadFileAsync(url);
+            mod.IsDownloading = false;
+            //if(Update)
+            //    DeleteMod(mod);
+            mod.ModEntries = ExtractFileFromStream(webFileInfo, LocalDb.Settings.DCSSaveGamesPath, mod.TargetFolder);
+            mod.IsDownloaded = true;
+            mod.IsPreviousVersion = false;
+            mod.IsModDefinition = true;
+            mod.IsPotentialMatch = false;
+            mod.PotentialMatch = null;
+            LocalDb.Mods.Add(mod);
+            mod.IsExtracting = false;
+            SaveLocalDb();
+            ScanMods();
+            return mod;
+        }
+
+        /// <summary>
+        /// match a mod with a potential match
+        /// </summary>
+        /// <param name="mod"></param>
         public async void Match(Mod mod)
         {
             var dbMod = LocalDb.Mods.FirstOrDefault(m =>!m.IsModDefinition &&  m.Title == mod.PotentialMatch.Title && m.TargetFolder.ToLower() == mod.PotentialMatch.TargetFolder.ToLower());
@@ -189,6 +255,10 @@ namespace eoj12.DCS.Toolkit.Services
             SaveLocalDb();
         }
 
+        /// <summary>
+        /// scan the mods folder and return a list of mods
+        /// </summary>
+        /// <returns></returns>
         public List<Mod> ScanMods()
         {
             List<Mod> localMods = new List<Mod>();
@@ -197,6 +267,12 @@ namespace eoj12.DCS.Toolkit.Services
             ScanModsFolder(localMods, Folders.LIVERIES);
             return localMods.OrderBy(m => m.Title).ToList();
         }
+
+        /// <summary>
+        /// export a list of mods to a json file
+        /// </summary>
+        /// <param name="mods"></param>
+        /// <returns></returns>
         public string ExportMods(List<Mod> mods)
         {
 
@@ -206,6 +282,11 @@ namespace eoj12.DCS.Toolkit.Services
             return fileName;
         }
 
+        /// <summary>
+        /// scan a mod folder and return a list of mods
+        /// </summary>
+        /// <param name="localMods"></param>
+        /// <param name="modPath"></param>
         private void ScanModsFolder(List<Mod> localMods, string modPath)
         {
             DirectoryInfo directoryInfo = new DirectoryInfo(LocalDb.Settings.DCSSaveGamesPath + modPath);
@@ -269,6 +350,12 @@ namespace eoj12.DCS.Toolkit.Services
             SaveLocalDb();
         }
 
+        /// <summary>
+        /// create a mod entry from a directory
+        /// </summary>
+        /// <param name="modPath"></param>
+        /// <param name="modDirectory"></param>
+        /// <returns></returns>
         private Mod CreateModEntries(string modPath, DirectoryInfo modDirectory)
         {
 
@@ -303,7 +390,13 @@ namespace eoj12.DCS.Toolkit.Services
             return sizeString;
         }
 
-
+        /// <summary>
+        /// Add a mod to the database
+        /// </summary>
+        /// <param name="mod"></param>
+        /// <param name="file"></param>
+        /// <param name="udpate"></param>
+        /// <returns></returns>
         public async Task<Mod> AddMod(Mod mod, IBrowserFile file, bool udpate)
         {
             var dbMod = LocalDb.Mods.FirstOrDefault(m => m.Title.ToLower() == mod.Title.ToLower());
@@ -347,6 +440,10 @@ namespace eoj12.DCS.Toolkit.Services
             }
             else { return null; };
         }
+        /// <summary>
+        /// Update a mod
+        /// </summary>
+        /// <param name="mod"></param>
         public async void UpdateMod(Mod mod)
         {
             var dbMod = LocalDb.Mods.FirstOrDefault(m => m.Folder.ToLower() == mod.Folder.ToLower() && !m.IsModDefinition);
@@ -365,6 +462,11 @@ namespace eoj12.DCS.Toolkit.Services
             SaveLocalDb();
         }
 
+        /// <summary>
+        /// Get
+        /// </summary>
+        /// <param name="url"></param>
+        /// <returns></returns>
         public static async Task<WebFileInfo> GetWebFileInfoAndFixGoogleUrl(string url)
         {
             var webFileInfo = await GetWebFileInfo(url);
@@ -387,7 +489,11 @@ namespace eoj12.DCS.Toolkit.Services
             return modInfo;
         }
 
-
+        /// <summary>
+        /// Get the file info from the url
+        /// </summary>
+        /// <param name="url"></param>
+        /// <returns></returns>
         public static async Task<WebFileInfo> GetWebFileInfo(string url)
         {
             //Uri retUri = null;
@@ -416,7 +522,11 @@ namespace eoj12.DCS.Toolkit.Services
             response.Close();
             return modInfo;
         }
-
+        /// <summary>
+        /// Fix the google url
+        /// </summary>
+        /// <param name="webFileInfo"></param>
+        /// <returns></returns>
         public static async Task<string> FixGoogleUrl(WebFileInfo webFileInfo)
         {
 
@@ -457,6 +567,11 @@ namespace eoj12.DCS.Toolkit.Services
             return returnUrl;
         }
 
+        /// <summary>
+        /// Get the web content
+        /// </summary>
+        /// <param name="url"></param>
+        /// <returns></returns>
         static async Task<string> GetWebContent(string url)
         {
             using (HttpClient client = new HttpClient())
@@ -465,7 +580,10 @@ namespace eoj12.DCS.Toolkit.Services
             }
         }
 
-
+        /// <summary>
+        /// Delete a mod
+        /// </summary>
+        /// <param name="mod"></param>
         public void DeleteMod(Mod mod)
         {
             List<Mod> dbMods = null;
@@ -513,7 +631,10 @@ namespace eoj12.DCS.Toolkit.Services
                 });
             }
         }
-
+        /// <summary>
+        /// Disable a mod
+        /// </summary>
+        /// <param name="mod"></param>
         public void DisableMod(Mod mod)
         {
 
@@ -557,6 +678,11 @@ namespace eoj12.DCS.Toolkit.Services
             SaveLocalDb();
 
         }
+
+        /// <summary>
+        /// Enable a mod
+        /// </summary>
+        /// <param name="mod"></param>
         public void EnableMod(Mod mod)
         {
 
@@ -599,7 +725,11 @@ namespace eoj12.DCS.Toolkit.Services
 
         }
 
-
+        /// <summary>
+        /// Download a file from a url
+        /// </summary>
+        /// <param name="url"></param>
+        /// <returns></returns>
         public async Task<WebFileInfo> DownloadFileAsync(string url)
         {
             var modInfo = await GetWebFileInfoAndFixGoogleUrl(url);// GetWebFileInfo(url);//
@@ -611,6 +741,14 @@ namespace eoj12.DCS.Toolkit.Services
 
         }
 
+        /// <summary>
+        /// Extract a zip file from a stream
+        /// </summary>
+        /// <param name="webFileInfo"></param>
+        /// <param name="saveGamePath"></param>
+        /// <param name="targetFolder"></param>
+        /// <returns></returns>
+        /// <exception cref="Exception"></exception>
         public List<ModEntry> ExtractFileFromStream(WebFileInfo webFileInfo, string saveGamePath, string targetFolder)
         {
             List<ModEntry> entries = null;
@@ -632,7 +770,13 @@ namespace eoj12.DCS.Toolkit.Services
 
         }
 
-
+        /// <summary>
+        /// Extract a zip file from a stream
+        /// </summary>
+        /// <param name="stream"></param>
+        /// <param name="outputPath"></param>
+        /// <param name="targetFolder"></param>
+        /// <returns></returns>
         public static List<ModEntry> ExtractZipFromStream(Stream stream, string outputPath, string targetFolder)
         {
             using (ZipArchive archive = new ZipArchive(stream, ZipArchiveMode.Read))
@@ -640,7 +784,7 @@ namespace eoj12.DCS.Toolkit.Services
                 List<ModEntry> entries = new List<ModEntry>();
                 foreach (ZipArchiveEntry entry in archive.Entries)
                 {
-                    if (!entry.Name.ToLower().Contains("desktop.ini"))
+                    if (!entry.Name.ToLower().Contains("desktop.ini") && !entry.Name.ToLower().Contains("thumbs.db"))
                     {
                         ModEntry modEntry = new ModEntry()
                         {
@@ -677,17 +821,24 @@ namespace eoj12.DCS.Toolkit.Services
             }
         }
 
+        /// <summary>
+        /// Extract a rar file from a fileinfo
+        /// </summary>
+        /// <param name="fileInfo"></param>
+        /// <param name="outputPath"></param>
+        /// <param name="targetFolder"></param>
+        /// <returns></returns>
         public static List<ModEntry> ExtractRarFromFileInfo(FileInfo fileInfo, string outputPath, string targetFolder)
         {
 
-            EnsureFolder(outputPath);
+            EnsureDirectory(outputPath);
             var modFolder = outputPath.ToLower().Split("\\").LastOrDefault();
             List<ModEntry> entries = new List<ModEntry>();
             using (var archive = RarArchive.Open(fileInfo))
             {
                 foreach (var entry in archive.Entries)
                 {
-                    if (!entry.Key.ToLower().Contains("desktop.ini"))
+                    if (!entry.Key.ToLower().Contains("desktop.ini")&& !entry.Key.ToLower().Contains("thumbs.db") )
                     {
                         ModEntry modEntry = new ModEntry()
                         {
@@ -705,7 +856,7 @@ namespace eoj12.DCS.Toolkit.Services
                             string fileName = Path.GetFileName(modEntry.Path);
                             string folder = Path.GetFullPath(modEntry.Path).Replace(fileName, "");
 
-                            EnsureFolder(folder);
+                            EnsureDirectory(folder);
 
                             entry.WriteToFile(modEntry.Path, new ExtractionOptions
                             {
@@ -721,6 +872,13 @@ namespace eoj12.DCS.Toolkit.Services
             return entries;
         }
 
+        /// <summary>
+        /// Trim path to remove duplicate folder
+        /// </summary>
+        /// <param name="outputPath"></param>
+        /// <param name="targetFolder"></param>
+        /// <param name="modEntryPath"></param>
+        /// <returns></returns>
         //C:\Users\xx\Saved Games\DCS.openbetaModManager2\Liveries\  \Liveries\T-45\CT-155201
         //C:\Users\xx\Saved Games\DCS.openbetaModManager3\           \425 Warthog Liveries Pack_02\Liveries\A-10CII\RCAF_425_LowVis_DarkGreenCamo
         //C:\Users\xx\Saved Games\DCS.openbetaModManager3\           \425 Warthog Liveries Pack_02\Mods\aircraft\A-10CII\RCAF_425_LowVis_DarkGreenCamo
@@ -747,14 +905,6 @@ namespace eoj12.DCS.Toolkit.Services
 
         }
 
-        private static void EnsureFolder(string outputPath)
-        {
-            DirectoryInfo directoryInfo = new DirectoryInfo(outputPath);
-            if (!directoryInfo.Exists)
-            {
-                Directory.CreateDirectory(outputPath);
-            }
-        }
 
         public FileStream ConvertMemoryStreamToFileStream(MemoryStream memoryStream, string outputFilePath)
         {

@@ -2,31 +2,41 @@
 @using CommunityToolkit.Maui.Storage;
 @using eoj12.DCS.Toolkit.Data;
 @using eoj12.DCS.Toolkit.Services;
-
+@inject IJSRuntime jsRuntime
 
 
 
 <div class="form-group">
 
-    <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H3">DCS Save Games Folder  :</RadzenText>
+    <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H2">DCS Save Games Folder  :</RadzenText>
     <RadzenText TextStyle="TextStyle.Body2">ex : C:\Users\[USER]\Saved Games\DCS.openbeta</RadzenText>
     <RadzenTextBox Disabled="true" class="w-100" @bind-Value=folderPath />
     <RadzenButton ButtonStyle="ButtonStyle.Primary" Icon="add_circle_outline" class="mt-2 mb-4" Text="Select Folder" Click="@OnSelectFolderClick" />
-    <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H3">Application Folder  :</RadzenText>
+
+    <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H2">Chose your logo  :</RadzenText>
+    <RadzenFileInput TValue="string" class="w-100" @bind-Value=@settings.LogoBase64 @bind-FileName=@settings.LogoName @bind-FileSize=@fileSize
+                     Change=@(args => OnChange(args, "FileInput")) Error=@(args => OnError(args, "FileInput")) Accept=".png" />
+
+    <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H2">Application Folder  :</RadzenText>
     <RadzenTextBox Disabled="true" class="w-100" @bind-Value=appDataPath />
     <RadzenButton ButtonStyle="ButtonStyle.Primary" Icon="add_circle_outline" class="mt-2 mb-4" Text="Clear App Settings" Click="@OnDeleteDB" />
+
+
 </div>
 @code {
     string folderPath = "";
     string appDataPath ="";
+    Models.Settings settings = null;
+    public long? fileSize;
     ModManagerService modManagerService = new ModManagerService();
+    ElementReference MyElementReference;
 
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
         try
         {
-            var settings =await modManagerService.GetSettings();
+            settings =await modManagerService.GetSettings();
             folderPath = settings.DCSSaveGamesPath;
             appDataPath = FileSystem.Current.AppDataDirectory;
         }
@@ -55,5 +65,36 @@
         folderPath = settings.DCSSaveGamesPath;
         StateHasChanged();
 
+    }
+    private async void  OnChange(string value, string name)
+    {
+        if (value != null)
+        {
+            settings.LogoBase64 = value;
+            settings.LogoName = name;
+            modManagerService.SaveSettings(settings);
+        }
+        else
+        {
+            settings.LogoBase64 = "";
+            settings.LogoName = "";
+            modManagerService.SaveSettings(settings);
+        };
+        StateHasChanged();
+
+        // Action callback = () =>
+        // {
+        //     src = settings.LogoBase64;
+        //     StateHasChanged();
+        // };
+        // JsRuntime.InvokeAsync("RegisterTransitionsCompletedEventListener", "logo", callback);
+
+        // await jsRuntime.InvokeAsync<object>("changeLogo");
+        
+    }
+
+    void OnError(UploadErrorEventArgs args, string name)
+    {
+        ;
     }
 }   

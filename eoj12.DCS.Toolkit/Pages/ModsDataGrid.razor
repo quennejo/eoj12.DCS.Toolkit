@@ -1,4 +1,5 @@
-﻿@using eoj12.DCS.Toolkit.Services;
+﻿@using System.Text;
+@using eoj12.DCS.Toolkit.Services;
 @using eoj12.DCS.Toolkit.Data;
 @using eoj12.DCS.Toolkit.Models;
 @using System.Net;
@@ -9,23 +10,28 @@
 @inject DialogService DialogService
 @inject NavigationManager NavigationManager
 @inject TooltipService tooltipService
-@*<RadzenDialog />*@
 
 @if (ShowLoadFileDefinition)
 {
     <div class="form-group">
         <RadzenFieldset Text="Load Mod Definition">
+            <RadzenCard>
         <div class="row">
             <div class="col">
+
                 <RadzenLabel Text="Enter mod definition Url :" />
                 <input type="text" class="form-control" @bind-value="_url" />
                     <RadzenButton Shade="Shade.Lighter" ButtonStyle=" ButtonStyle.Primary" Icon="rotate_right" Text="Load Definition file" Click="@DownloadFileDefinition" Disabled="@string.IsNullOrEmpty(_url)" />
+                    
             </div>
-            <div class="col">
-                <RadzenLabel Text="Select local file :" />
-                <InputFile class="form-control" OnChange="@DownloadFileDefinitionFromFile" accept=".json" />
+            <div class="col">               
+                    <RadzenLabel Text="Select local file :" />
+                    <RadzenFileInput TValue="string" class="w-100"
+                                         Change=@(args => DownloadFileDefinitionFromFile(args, "FileInput")) Error=@(args => OnError(args, "FileInput")) Accept=".json" />
+        
             </div>
         </div>
+            </RadzenCard>
         </RadzenFieldset>
     </div>
 }
@@ -34,7 +40,7 @@
             <div class="col">
             @if (ShowScanMod)
             {
-                <RadzenButton ButtonStyle="ButtonStyle.Primary" Icon="scanner" class="mt-2 mb-4" Text="Scan Mod" Click="@ScanMod" Disabled=@(_modToInsert != null || _modToUpdate != null) />
+                <RadzenButton ButtonStyle="ButtonStyle.Primary" Icon="scanner" class="mt-2 mb-4" Text="Scan Mods" Click="@ScanMod" Disabled=@(_modToInsert != null || _modToUpdate != null) />
             }
             @if (DefinitionMode)
             {
@@ -65,12 +71,11 @@
         </div>
     </div>
 <RadzenDataGrid @ref="_modsGrid" AllowAlternatingRows="false" AllowFiltering="true" AllowPaging="true" PageSize="15" AllowSorting="true" EditMode="DataGridEditMode.Single"
-                Data="@Mods" TItem="Mod" RowUpdate="@OnUpdateRow" RowCreate="@OnCreateRow" Sort="@Reset" Page="@Reset" Filter="@Reset" AllowGrouping="true" FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" Render="@OnRender" >
+                Data="@Mods" TItem="Mod" RowUpdate="@OnUpdateRow" RowCreate="@OnCreateRow" Sort="@Reset" Page="@Reset" Filter="@Reset" AllowGrouping="true" FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive">
     <GroupHeaderTemplate>
         @context.Data.Key
     </GroupHeaderTemplate>
     <Columns>
-      
         @if (!DefinitionMode)
         {
             <RadzenDataGridColumn TItem="Mod" Property="Folder" Title="Name" Width="">
@@ -260,8 +265,11 @@
     }
 
 
-
     private ModManagerService modManagerService = new ModManagerService();
+    /// <summary>
+    /// on init load settings
+    /// </summary>
+    /// <returns></returns>
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
@@ -279,15 +287,10 @@
         }
     }
 
-    void OnRender(DataGridRenderEventArgs<Mod> args)
-    {
-        //if (args.FirstRender)
-        //{
-        //    args.Grid.Groups.Add(new GroupDescriptor() { Title = "ParentModTitle", Property = "ParentModTitle", SortOrder = SortOrder.Ascending });
-        //    StateHasChanged();
-        //}
-    }
-
+    /// <summary>
+    /// scan mod folder
+    /// </summary>
+    /// <returns></returns>
     private async Task ScanMod()
     {
         try
@@ -301,6 +304,10 @@
             await ShowErrorMessages(ex.Message);
         }
     }
+    /// <summary>
+    /// export mod definition
+    /// </summary>
+    /// <returns></returns>
     private async Task ExportMods()
     {
         try
@@ -342,6 +349,11 @@
             await ShowErrorMessages(ex.Message);
         }
     }
+    /// <summary>
+    /// save row
+    /// </summary>
+    /// <param name="mod"></param>
+    /// <returns></returns>
     async Task SaveRow(Mod mod)
     {
         try
@@ -353,6 +365,11 @@
             await ShowErrorMessages(ex.Message);
         }
     }
+    /// <summary>
+    /// delete row
+    /// </summary>
+    /// <param name="mod"></param>
+    /// <returns></returns>
     async Task DeleteRow(Mod mod)
     {
         try
@@ -361,12 +378,10 @@
             {
                 _modToInsert = null;
             }
-
             if (mod == _modToUpdate)
             {
                 _modToUpdate = null;
             }
-
             if (Mods.Contains(mod))
             {
                 if (!DefinitionMode)
@@ -386,43 +401,48 @@
         }
     }
 
-    //create  function to download file definition. The function must be syncro
-    
+    void DownloadFileDefinitionFromFile(string value, string name)
+    {
+        if (value != null)
+        {
+            ShowBusyDialog("Loading File Definition... ");
 
+            // create a stream from the from base64 string and pass it to the service
+            value = value.Replace("data:application/json;base64,", "");
+            var stream = new MemoryStream(Convert.FromBase64String(value));
 
-    // private   void DownloadFileDefinitionFromFile(InputFileChangeEventArgs e)
+            Mods = modManagerService.DownloadFileDefinitionAsync(stream).Result;
+            StateHasChanged();
+            CloseBusyDialog();
+        }
+    }
+    void OnError(UploadErrorEventArgs args, string name)
+    {
+        ;
+        //console.Log($"{args.Message}");
+    }
+    /// <summary>
+    /// download mod from url
+    /// </summary>
+    /// <param name="e"></param>
+    // private async void DownloadFileDefinitionFromFile(InputFileChangeEventArgs e)
     // {
     //     try
     //     {
     //         ShowBusyDialog("Loading File Definition... ");
-          
-    //         Task<List<Mod>> downloadTask = Task.Run(async () => await modManagerService.DownloadFileDefinitionAsync(e.File.OpenReadStream()));
-    //         downloadTask.Wait(); // Wait for the task to complete
-    //         List<Mod> mods = downloadTask.Result;
+    //         Mods = await modManagerService.DownloadFileDefinitionAsync(e.File.OpenReadStream()); ;
     //         StateHasChanged();
     //         CloseBusyDialog();
     //     }
     //     catch (Exception ex)
     //     {
-    //         ;
-    //         //     ShowErrorMessages("File not supported. Please select .json file").;
+    //         await ShowErrorMessages("File not supported. Please select .json file");
     //     }
     // }
-    private async void DownloadFileDefinitionFromFile(InputFileChangeEventArgs e)
-    {
-        try
-        {
-            ShowBusyDialog("Loading File Definition... ");
-            //var reader = await new StreamReader(e.File.OpenReadStream()).ReadToEndAsync();
-            Mods = await modManagerService.DownloadFileDefinitionAsync(e.File.OpenReadStream()); ;
-            StateHasChanged();
-            CloseBusyDialog();
-        }
-        catch (Exception ex)
-        {
-            await ShowErrorMessages("File not supported. Please select .json file");
-        }
-    }
+    /// <summary>
+    /// on mod selection
+    /// </summary>
+    /// <param name="e"></param>
     private async void OnModSelection(InputFileChangeEventArgs e)
     {
         try
@@ -442,6 +462,10 @@
             await ShowErrorMessages("File not supported. Please select .rar or .zip file");
         }
     }
+    /// <summary>
+    /// download file definition from url
+    /// </summary>
+    /// <returns></returns>
     private async Task DownloadFileDefinition()
     {
         try
@@ -455,67 +479,69 @@
         }
         catch (Exception ex)
         {
-            await ShowErrorMessages(ex.Message);
+            CloseBusyDialog();
+             if (ex.Message.Contains("403."))
+                await ShowErrorMessages("Your limit has been exceeded on Google drive. Please try later..");
+            else
+                await ShowErrorMessages(ex.Message);
+
+
         }
     }
+    /// <summary>
+    /// download mod 
+    /// </summary>
+    /// <param name="modDefinition"></param>
+    /// <returns></returns>
     private async Task DownloadMod(Mod modDefinition)
     {
         try
         {
-            ShowBusyDialog($"Downloading {modDefinition.Title} ... ");
-            modDefinition.IsDownloading = true;
-            var url = modDefinition.Url.ToString();
-            var contentStream = await modManagerService.DownloadFileAsync(url);
-            modDefinition.IsDownloading = false;
-            modDefinition.IsExtracting = true;
-            CloseBusyDialog();
-            ShowBusyDialog("Extracting mod... ");
-            StateHasChanged();
-            modDefinition.ModEntries = modManagerService.ExtractFileFromStream(contentStream,_settings.DCSSaveGamesPath,modDefinition.TargetFolder);
-            modDefinition.IsDownloaded = true;
-            modDefinition.IsModDefinition = true;
-            modManagerService.LocalDb.Mods.Add(modDefinition);
-            modDefinition.IsExtracting = false;
-            modManagerService.SaveLocalDb();
-            modManagerService.ScanMods();
+            ShowBusyDialog($"Downloading", $"{modDefinition.Title}",$"Target Folder : {modDefinition.TargetFolder}",$"Size : {modDefinition.Size}",$"Version : {modDefinition.Version}");
+            await modManagerService.DownloadMod(modDefinition);
             StateHasChanged();
             CloseBusyDialog();
         }
         catch (Exception ex)
         {
-            await ShowErrorMessages(ex.Message);
+            CloseBusyDialog();
+            if (ex.Message.Contains("403"))
+                await ShowErrorMessages("Your limit has been exceeded on Google drive. Please try later..");
+            else
+                await ShowErrorMessages(ex.Message);
+
         }
     }
+    /// <summary>
+    /// update mod
+    /// </summary>
+    /// <param name="modDefinition"></param>
+    /// <returns></returns>
     private async Task UpdateMod(Mod modDefinition)
     {
         try
         {
-            ShowBusyDialog($"Downloading {modDefinition.Title} ... ");
-            modDefinition.IsDownloading = true;
-            var url = modDefinition.Url.ToString();
-            var webFileInfo = await modManagerService.DownloadFileAsync(url);
-            modDefinition.IsDownloading = false;
-            modDefinition.IsExtracting = true;
             CloseBusyDialog();
-            ShowBusyDialog("Extracting mod... ");
+            ShowBusyDialog($"Downloading", $"{modDefinition.Title}",$"Target Folder : {modDefinition.TargetFolder}",$"Size : {modDefinition.Size}",$"Version : {modDefinition.Version}");
+            await modManagerService.DownloadMod(modDefinition,true);
             StateHasChanged();
-            modManagerService.DeleteMod(modDefinition);
-            modDefinition.ModEntries = modManagerService.ExtractFileFromStream(webFileInfo, _settings.DCSSaveGamesPath,modDefinition.TargetFolder);
-            modDefinition.IsDownloaded = true;
-            modDefinition.IsPreviousVersion = false;
-            modDefinition.IsModDefinition = true;
-            modManagerService.LocalDb.Mods.Add(modDefinition);
-            modDefinition.IsExtracting = false;
-            modManagerService.SaveLocalDb();
-            modManagerService.ScanMods();
-            StateHasChanged();          
-            CloseBusyDialog();
+
         }
         catch (Exception ex)
         {
-            await ShowErrorMessages(ex.Message);
+            CloseBusyDialog();
+            if (ex.Message.Contains("403"))
+                await ShowErrorMessages("Your limit has been exceeded on Google drive. Please try later..");
+            else
+                await ShowErrorMessages(ex.Message);
+
         }
     }
+    /// <summary>
+    /// Match mod
+    /// </summary>
+    /// <param name="mod"></param>
+    /// <returns></returns>
     private async Task Match(Mod mod)
     {
         try
@@ -550,7 +576,8 @@
                     <RadzenButton Text="Cancel" Click="() => ds.Close(false)" ButtonStyle="ButtonStyle.Light" />
                 </RadzenStack>
             </RadzenStack>
-            </RadzenStack>);
+        </RadzenStack>
+    );
             if (result != null && result==true)
             {
                 modManagerService.Match(mod);
@@ -567,6 +594,10 @@
             await ShowErrorMessages(ex.Message);
         }
     }
+    /// <summary>
+    /// Disable all mods
+    /// </summary>
+    /// <returns></returns>
     private async Task DisableAll()
     {
         try
@@ -586,6 +617,10 @@
             await ShowErrorMessages(ex.Message);
         }
     }
+    /// <summary>
+    /// enable all mods
+    /// </summary>
+    /// <returns></returns>
     private async Task EnableAll()
     {
         try
@@ -608,6 +643,11 @@
         }
     }
 
+    /// <summary>
+    /// disable mod
+    /// </summary>
+    /// <param name="modDefinition"></param>
+    /// <returns></returns>
     private async Task DisableMod(Mod modDefinition)
     {
         try
@@ -623,6 +663,11 @@
         }
     }
 
+    /// <summary>
+    /// enable mod
+    /// </summary>
+    /// <param name="modDefinition"></param>
+    /// <returns></returns>
     private async Task EnableMod(Mod modDefinition)
     {
         try
@@ -638,7 +683,10 @@
             await ShowErrorMessages(ex.Message);
         }
     }
-
+    /// <summary>
+    /// update row event
+    /// </summary>
+    /// <param name="mod"></param>
     void OnUpdateRow(Mod mod)
     {
         try
@@ -660,6 +708,11 @@
             ShowErrorMessages(ex.Message).Wait();
         }
     }
+
+    /// <summary>
+    /// create row event
+    /// </summary>
+    /// <param name="mod"></param>
     async void OnCreateRow(Mod mod)
     {
         try
@@ -683,7 +736,10 @@
             await ShowErrorMessages(ex.Message);
         }
     }
-
+    /// <summary>
+    /// cancel edit event
+    /// </summary>
+    /// <param name="mod"></param>
     void CancelEdit(Mod mod)
     {
         if (mod == _modToInsert)
@@ -699,13 +755,20 @@
         _modToUpdate = null;
     }
 
-
-    async Task ShowBusyDialog(string withMessageAsString = "Loading...")
+    /// <summary>
+    /// show error messages as dialog
+    /// </summary>
+    /// <param name="line1"></param>
+    /// <param name="line2"></param>
+    /// <param name="line3"></param>
+    /// <param name="line4"></param>
+    /// <returns></returns>
+    async Task ShowBusyDialog(string title = "Loading...", string line1 = "",string line2 = "", string line3 = "", string line4 = "")
     {
-        await BusyDialog(withMessageAsString);     
+        await BusyDialog(title,line1,line2,line3,line4);     
     }
 
-    async Task BusyDialog(string message)
+    async Task BusyDialog(string title, string line1, string line2, string line3, string line4 )
     {
         await DialogService.OpenAsync("Please Wait...", ds =>
     @<div>
@@ -714,17 +777,45 @@
                 <RadzenProgressBarCircular ProgressBarStyle="ProgressBarStyle.Primary" Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Large" />
             </div>
             <div class="col">
-                @message
+                <RadzenCard Style="width:100%">
+                    <p><h4>@title</h4></p>
+                    <table class="table">
+
+                    <tbody>
+                        <tr><b>@line1</b></tr>
+                        <tr>
+                            <td>@line2</td>
+                        </tr>
+                        <tr>
+                            <td>@line3</td>
+                        </tr>
+                        <tr>
+                            <td>@line4</td>
+                        </tr>
+                    </tbody>
+                 </table>
+                </RadzenCard>
+            
             </div>
         </div>
-    </div>, new DialogOptions() { ShowTitle = true});
+        </div>
+    , new DialogOptions() { ShowTitle = true, Width = "650px", Height = "300px", Resizable = true, Draggable = true });
         await Task.Delay(2000);
     }
+    /// <summary>
+    /// close busy dialog
+    /// </summary>
+    /// <returns></returns>
     async Task CloseBusyDialog()
     {
-         DialogService.Close();
+        DialogService.Close();
     }
 
+    /// <summary>
+    /// show error messages as dialog
+    /// </summary>
+    /// <param name="errorMessage"></param>
+    /// <returns></returns>
     async Task ShowErrorMessages(string errorMessage)
     {
         DialogService.Alert(errorMessage, "Error", new AlertOptions() { OkButtonText = "Ok" });

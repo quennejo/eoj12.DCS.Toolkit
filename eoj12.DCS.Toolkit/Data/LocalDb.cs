@@ -15,6 +15,8 @@ namespace eoj12.DCS.Toolkit.Data
         public string ModDefinitionUrl { get; set; }
         public Settings Settings { get; set; }
 
+
+
         List<Mod> _mods;
         public List<Mod> Mods 
         {

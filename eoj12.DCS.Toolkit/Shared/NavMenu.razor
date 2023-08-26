@@ -1,4 +1,6 @@
-﻿<div class="top-row ps-3 navbar navbar-dark" style="height:5em">
+﻿@using eoj12.DCS.Toolkit.Models;
+@using eoj12.DCS.Toolkit.Services;
+<div class="top-row ps-3 navbar navbar-dark" style="height:5em">
     <div class="container-fluid">
         <a class="navbar-brand" href=""><img src="logo_wide.png" style="height:43px" /></a>
         <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
@@ -23,6 +25,7 @@
         </div>
     </nav>
 </div>
+
 <div class="@NavMenuCssClass" style="position:relative;bottom:-webkit-calc(-100% + 300px)" @onclick="ToggleNavMenu">
     <nav class="flex-column">
         <div class="nav-item px-3">
@@ -32,9 +35,25 @@
         </div>
     </nav>
 </div>
-
+<div class="@NavMenuCssClass" @onclick="ToggleNavMenu">
+    <nav class="flex-column">
+        <div class="nav-item px-3">
+            <RadzenImage id="logo" title="Logo" Src="@settings.LogoBase64" style="width: 220px"/>
+        </div>
+    </nav>
+</div>
+@* <script>
+    function changeLogo(var logBase64) {
+        alert(logoBase64);
+        // var img;
+        // // access DOM here
+        // img = document.getElementById('logo');
+        // img.src = logBase64;
+    }
+</script> *@
 @code {
     private bool collapseNavMenu = true;
+    Settings settings = null;
 
     private string NavMenuCssClass => collapseNavMenu ? "collapse" : null;
 
@@ -42,4 +61,21 @@
     {
         collapseNavMenu = !collapseNavMenu;
     }
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        try
+        {
+            ModManagerService modManagerService = new ModManagerService();
+            settings = await modManagerService.GetSettings();
+           
+        }
+        catch (Exception ex)
+        {
+            throw;
+        }
+        
+    }
+
+
 }
