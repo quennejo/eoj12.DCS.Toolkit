@@ -25,10 +25,10 @@
                     
             </div>
             <div class="col">               
-                    <RadzenLabel Text="Select local file :" />
+                   @*  <RadzenLabel Text="Select local file :" />
                     <RadzenFileInput TValue="string" class="w-100"
                                          Change=@(args => DownloadFileDefinitionFromFile(args, "FileInput")) Error=@(args => OnError(args, "FileInput")) Accept=".json" />
-        
+         *@
             </div>
         </div>
             </RadzenCard>
@@ -47,7 +47,7 @@
                 <RadzenButton ButtonStyle="ButtonStyle.Primary" Icon="add_circle_outline" class="mt-2 mb-4" Text="Add Mod" Click="@InsertRow" Disabled=@(_modToInsert != null || _modToUpdate != null) />
             }else
             {
-                <RadzenButton ButtonStyle="ButtonStyle.Primary" Icon="add_circle_outline" class="mt-2 mb-4" Text="Install Mod" Click="@InsertRow" Disabled=@(_modToInsert != null || _modToUpdate != null) />
+                @* <RadzenButton ButtonStyle="ButtonStyle.Primary" Icon="add_circle_outline" class="mt-2 mb-4" Text="Install Mod" Click="@InsertRow" Disabled=@(_modToInsert != null || _modToUpdate != null) /> *@
             }
             @if (!DefinitionMode && IsNew)
             {
@@ -385,9 +385,34 @@
             if (Mods.Contains(mod))
             {
                 if (!DefinitionMode)
-                    modManagerService.DeleteMod(mod);
-                Mods.Remove(mod);
-                await _modsGrid.Reload();
+                {
+                    var result = await DialogService.OpenAsync("Confirmation", ds =>
+                     @<RadzenStack Gap="1.5rem">
+                         <p>This operation will delete the mod from your computer. Do you want to continue ?</p>
+
+
+                         <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+                             <RadzenStack Orientation="Orientation.Horizontal">
+                                 <RadzenButton Text="Confirm" Click="() => ds.Close(true)" />
+                                 <RadzenButton Text="Cancel" Click="() => ds.Close(false)" ButtonStyle="ButtonStyle.Light" />
+                             </RadzenStack>
+                         </RadzenStack>
+        </RadzenStack>
+    );
+                    if (result != null && result == true)
+                    {
+                        modManagerService.DeleteMod(mod);
+                        Mods.Remove(mod);
+                        await _modsGrid.Reload();
+                    }
+                }
+                else
+                {
+                    Mods.Remove(mod);
+                    await _modsGrid.Reload();
+                
+                }
+                    
             }
             else
             {
@@ -421,24 +446,7 @@
         ;
         //console.Log($"{args.Message}");
     }
-    /// <summary>
-    /// download mod from url
-    /// </summary>
-    /// <param name="e"></param>
-    // private async void DownloadFileDefinitionFromFile(InputFileChangeEventArgs e)
-    // {
-    //     try
-    //     {
-    //         ShowBusyDialog("Loading File Definition... ");
-    //         Mods = await modManagerService.DownloadFileDefinitionAsync(e.File.OpenReadStream()); ;
-    //         StateHasChanged();
-    //         CloseBusyDialog();
-    //     }
-    //     catch (Exception ex)
-    //     {
-    //         await ShowErrorMessages("File not supported. Please select .json file");
-    //     }
-    // }
+   
     /// <summary>
     /// on mod selection
     /// </summary>
@@ -521,11 +529,10 @@
     {
         try
         {
-            CloseBusyDialog();
-            ShowBusyDialog($"Downloading", $"{modDefinition.Title}",$"Target Folder : {modDefinition.TargetFolder}",$"Size : {modDefinition.Size}",$"Version : {modDefinition.Version}");
-            await modManagerService.DownloadMod(modDefinition,true);
+            ShowBusyDialog($"Updating", $"{modDefinition.Title}", $"Target Folder : {modDefinition.TargetFolder}", $"Size : {modDefinition.Size}", $"Version : {modDefinition.Version}");
+            await modManagerService.DownloadMod(modDefinition);
             StateHasChanged();
-
+            CloseBusyDialog();
         }
         catch (Exception ex)
         {
@@ -535,7 +542,7 @@
             else
                 await ShowErrorMessages(ex.Message);
 
-        }
+        }    
     }
     /// <summary>
     /// Match mod
@@ -602,6 +609,7 @@
     {
         try
         {
+            ShowBusyDialog("Disable all mods..");
             Mods.ForEach(m =>  {
                 if(m.IsDisable==false){
                     modManagerService.DisableMod(m);
@@ -609,7 +617,9 @@
                     m.IsDownloaded = true;
                 }
             });
+            
             await _modsGrid.Reload();
+            CloseBusyDialog();
 
         }
         catch (Exception ex)
@@ -625,6 +635,10 @@
     {
         try
         {
+            // await ShowBusyDialog("Enable all mods.." );
+            DialogService.OpenAsync("Enable all mods", ds =>
+                @<RadzenText TextStyle="TextStyle.H6">Loading, please wait...</RadzenText>, new DialogOptions() { ShowTitle = true, Style = "min-height:auto;min-width:auto;width:auto", CloseDialogOnEsc = false });
+           
             Mods.ForEach(m =>
             {
                 if (m.IsDisable)
@@ -634,7 +648,9 @@
                     m.IsDownloaded = true;
                 }
             });
+            
             await _modsGrid.Reload();
+            await CloseBusyDialog();
 
         }
         catch (Exception ex)
@@ -779,21 +795,24 @@
             <div class="col">
                 <RadzenCard Style="width:100%">
                     <p><h4>@title</h4></p>
+                    @if (!string.IsNullOrEmpty(line1))
+                    {
                     <table class="table">
-
-                    <tbody>
-                        <tr><b>@line1</b></tr>
-                        <tr>
-                            <td>@line2</td>
-                        </tr>
-                        <tr>
-                            <td>@line3</td>
-                        </tr>
-                        <tr>
-                            <td>@line4</td>
-                        </tr>
-                    </tbody>
-                 </table>
+                        <tbody>
+                            <tr><b>@line1</b></tr>
+                            <tr>
+                                <td>@line2</td>
+                            </tr>
+                            <tr>
+                                <td>@line3</td>
+                            </tr>
+                            <tr>
+                                <td>@line4</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    }
+                    
                 </RadzenCard>
             
             </div>

@@ -6,28 +6,24 @@
 @using System.Net.Http
 @using System.IO
 @using System.Threading.Tasks
-
+@inject IJSRuntime jsRuntime
 
 <ModsDataGrid Mods="mods"  ShowScanMod="true" ShowIsDownloadButton=false ShowIsEnableButton="true" ShowModTagetFolder=true ShowModUrl=false></ModsDataGrid>
+
 @code {
     RadzenDataGrid<Mod> modsGrid;
     List<Mod> mods = null;
-
     private ModManagerService modManagerService = new ModManagerService();
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
         try
         {
-            mods = await modManagerService.GetMods(true);
+            mods = await modManagerService.GetMods(true);          
         }
         catch (Exception ex)
         {
             throw;
         }
-
     }
-   
-
-
 }

@@ -1,5 +1,6 @@
 ﻿@using eoj12.DCS.Toolkit.Models;
 @using eoj12.DCS.Toolkit.Services;
+@inject IJSRuntime jsRuntime
 <div class="top-row ps-3 navbar navbar-dark" style="height:5em">
     <div class="container-fluid">
         <a class="navbar-brand" href=""><img src="logo_wide.png" style="height:43px" /></a>
@@ -26,6 +27,7 @@
     </nav>
 </div>
 
+
 <div class="@NavMenuCssClass" style="position:relative;bottom:-webkit-calc(-100% + 300px)" @onclick="ToggleNavMenu">
     <nav class="flex-column">
         <div class="nav-item px-3">
@@ -35,25 +37,42 @@
         </div>
     </nav>
 </div>
+
+
 <div class="@NavMenuCssClass" @onclick="ToggleNavMenu">
     <nav class="flex-column">
         <div class="nav-item px-3">
-            <RadzenImage id="logo" title="Logo" Src="@settings.LogoBase64" style="width: 220px"/>
+            @* @if (!string.IsNullOrEmpty(  LogoBase64)){ *@
+            <RadzenImage id="logo" title="Logo" Src="@LogoBase64" style="width: 220px;" />
+            @* } *@
         </div>
     </nav>
 </div>
-@* <script>
-    function changeLogo(var logBase64) {
-        alert(logoBase64);
-        // var img;
-        // // access DOM here
-        // img = document.getElementById('logo');
-        // img.src = logBase64;
-    }
-</script> *@
+
+
+<script>
+    setLogo = (logoBase64) => {
+        var img;
+        // access DOM here
+        img = document.getElementById('logo');
+        img.src = logoBase64;
+        //set img invisible logoBase64 == null or empty
+        if (logoBase64 == null || logoBase64 == "") {
+            //img.style.display = "none";
+            img.src = "/spacer.png";
+        }
+        else {
+            img.src = logoBase64;
+            //img.style.display = "block";
+        } 
+    };
+</script>
+
 @code {
     private bool collapseNavMenu = true;
-    Settings settings = null;
+    ElementReference ReferenceLogoImg;
+    public string LogoBase64 { get; set; } 
+    // string  logoDisplay ="none";
 
     private string NavMenuCssClass => collapseNavMenu ? "collapse" : null;
 
@@ -67,8 +86,13 @@
         try
         {
             ModManagerService modManagerService = new ModManagerService();
-            settings = await modManagerService.GetSettings();
-           
+            var settings = await modManagerService.GetSettings();
+            if(!string.IsNullOrEmpty(settings.LogoBase64))
+            {
+                LogoBase64 = settings.LogoBase64;    
+            }   
+            else
+                LogoBase64 = @"/spacer.png";
         }
         catch (Exception ex)
         {

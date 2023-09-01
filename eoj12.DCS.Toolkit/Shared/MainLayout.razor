@@ -1,25 +1,14 @@
 ﻿@inherits LayoutComponentBase
 
 <div class="page">
-    <div class="sidebar">
-        <NavMenu />
+    <div class="sidebar">       
+        <NavMenu />           
     </div>
-
     <main>
         <div class="top-row px-4">
-                @*<RadzenLink Icon="settings" Path="AppSettings" Text="Settings" Style="" />*@
-      @*      <RadzenMenu>
-            <RadzenMenuItem Text="General" Icon="home">
-                    <RadzenMenuItem Text="Settings" Path="AppSettings" Icon="settings"></RadzenMenuItem>
-            </RadzenMenuItem>
-            </RadzenMenu>*@
         </div>
-
         <article class="content px-4">
             @Body
-            @*            <ErrorBoundary @ref="errorBoundary">
-            @Body
-            </ErrorBoundary>*@
         </article>
     </main>
 </div>
@@ -30,10 +19,6 @@
 ...
 
 @code {
-    //private ErrorBoundary? errorBoundary;
 
-    //protected override void OnParametersSet()
-    //{
-    //    errorBoundary?.Recover();
-    //}
+
 }

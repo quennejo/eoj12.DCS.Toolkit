@@ -587,14 +587,13 @@ namespace eoj12.DCS.Toolkit.Services
         public void DeleteMod(Mod mod)
         {
             List<Mod> dbMods = null;
-            if (mod.IsModDefinition)
-                dbMods = LocalDb.Mods.Where(m => m.Title.ToLower() == mod.Title.ToLower()).ToList();
-            else
-                dbMods = LocalDb.Mods.Where(m => m.Folder.ToLower() == mod.Folder.ToLower() && !m.IsModDefinition).ToList();
+            //if (mod.IsModDefinition)
+            dbMods = LocalDb.Mods.Where(m => (m.Title.ToLower() == mod.Title.ToLower())
+                    || m.Folder.ToLower() == mod.Folder.ToLower() && !m.IsModDefinition).ToList();
+            //else
+            //    dbMods = LocalDb.Mods.Where(m => m.Folder.ToLower() == mod.Folder.ToLower() && !m.IsModDefinition).ToList();
 
-            if (dbMods != null)
-            {
-                dbMods.ForEach(dbMod =>
+            dbMods?.ForEach(dbMod =>
                 {
                     foreach (var modEntry in dbMod.ModEntries.Where(e => e.IsDirectory == false))
                     {
@@ -629,7 +628,6 @@ namespace eoj12.DCS.Toolkit.Services
                     }
                     SaveLocalDb();
                 });
-            }
         }
         /// <summary>
         /// Disable a mod

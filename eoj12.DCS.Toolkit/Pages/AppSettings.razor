@@ -2,24 +2,33 @@
 @using CommunityToolkit.Maui.Storage;
 @using eoj12.DCS.Toolkit.Data;
 @using eoj12.DCS.Toolkit.Services;
+@using eoj12.DCS.Toolkit.Utilites;
+
+@inject DialogService DialogService
 @inject IJSRuntime jsRuntime
 
 
 
 <div class="form-group">
 
-    <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H2">DCS Save Games Folder  :</RadzenText>
+    <RadzenText TextStyle="TextStyle.DisplayH5" TagName="TagName.H1">DCS Save Games Folder  :</RadzenText>
     <RadzenText TextStyle="TextStyle.Body2">ex : C:\Users\[USER]\Saved Games\DCS.openbeta</RadzenText>
     <RadzenTextBox Disabled="true" class="w-100" @bind-Value=folderPath />
     <RadzenButton ButtonStyle="ButtonStyle.Primary" Icon="add_circle_outline" class="mt-2 mb-4" Text="Select Folder" Click="@OnSelectFolderClick" />
-
-    <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H2">Chose your logo  :</RadzenText>
-    <RadzenFileInput TValue="string" class="w-100" @bind-Value=@settings.LogoBase64 @bind-FileName=@settings.LogoName @bind-FileSize=@fileSize
-                     Change=@(args => OnChange(args, "FileInput")) Error=@(args => OnError(args, "FileInput")) Accept=".png" />
-
-    <RadzenText TextStyle="TextStyle.Subtitle2" TagName="TagName.H2">Application Folder  :</RadzenText>
+    <br /><br />
+    <RadzenText TextStyle="TextStyle.DisplayH5" TagName="TagName.H2">Logo :</RadzenText>
+   @*  <RadzenFileInput TValue="string" class="w-100" @bind-Value=@settings.LogoBase64 @bind-FileName=@settings.LogoName @bind-FileSize=@fileSize
+                     Change=@(args => OnChange(args, "FileInput")) Error=@(args => OnError(args, "FileInput")) Accept=".png" /> *@
+    <RadzenButton ButtonStyle="ButtonStyle.Primary" Icon="add_circle_outline" class="mt-2 mb-4" Text="Select your logo" Click="@OnSelectLogoClick" Disabled="@isLogoDisable" />
+    <br /><br />
+    <RadzenText TextStyle="TextStyle.DisplayH5" TagName="TagName.H2">Application Folder  :</RadzenText>
     <RadzenTextBox Disabled="true" class="w-100" @bind-Value=appDataPath />
-    <RadzenButton ButtonStyle="ButtonStyle.Primary" Icon="add_circle_outline" class="mt-2 mb-4" Text="Clear App Settings" Click="@OnDeleteDB" />
+    <RadzenButton ButtonStyle="ButtonStyle.Primary" Icon="add_circle_outline" class="mt-2 mb-4" Text="Clear App Settings" Click="@OnDeleteDB"  />
+    <br /><br />
+    <RadzenText TextStyle="TextStyle.DisplayH5" TagName="TagName.H3">Version and Build  :</RadzenText>
+    <RadzenText TextStyle="TextStyle.Body1" TagName="TagName.Span">Current Version: @VersionTracking.Default.CurrentVersion</RadzenText>
+    <br/>
+    <RadzenText TextStyle="TextStyle.Body1" TagName="TagName.Span">Next Version: Two weeks!</RadzenText>
 
 
 </div>
@@ -29,7 +38,8 @@
     Models.Settings settings = null;
     public long? fileSize;
     ModManagerService modManagerService = new ModManagerService();
-    ElementReference MyElementReference;
+    public string LogoBase64 { get; set; }
+    bool isLogoDisable =false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -39,6 +49,10 @@
             settings =await modManagerService.GetSettings();
             folderPath = settings.DCSSaveGamesPath;
             appDataPath = FileSystem.Current.AppDataDirectory;
+            if(string.IsNullOrEmpty(folderPath))
+            {
+                isLogoDisable = true;
+            }
         }
         catch (Exception ex)
         {
@@ -51,50 +65,180 @@
         FolderPickerResult folder = await FolderPicker.PickAsync(default);
         if (folder.IsSuccessful)
         {
+            ShowBusyDialog("Scanning Mods on your computer", "Please Wait...");
             folderPath = folder.Folder.Path;
             modManagerService.SaveSettings(new Models.Settings() { DCSSaveGamesPath = folderPath });
             modManagerService.ScanMods();
+            isLogoDisable = false;
+            CloseBusyDialog();
             StateHasChanged();
+
+        }
+
+    }
+    private async void OnSelectLogoClick()
+    {
+        try
+        {
+            var result = await FilePicker.PickAsync(new PickOptions
+                    {
+                        FileTypes = FilePickerFileType.Images, // Set the desired file types
+                    });
+
+            if (result != null)
+            {
+                // Handle the selected file
+                // You can save it, display it, or process it as needed
+                var fileStream = await result.OpenReadAsync();
+                // Example: Display the file name
+                var fileName = result.FileName;
+                // Example: Save the file to local storage
+                var localFilePath = Path.Combine(appDataPath, fileName);
+                using (var outputStream = File.OpenWrite(localFilePath))
+                {
+                    await fileStream.CopyToAsync(outputStream);
+                }
+                localFilePath =$"data:image/png;base64,{ImageHelper.ImageToBase64(localFilePath)}";
+                // string base64String = ImageHelper.ImageToBase64(localFilePath);
+                if (localFilePath != null)
+                {
+                    settings.LogoBase64 = localFilePath;
+                    settings.LogoName = result.FileName;
+                    modManagerService.SaveSettings(settings);
+                    StateHasChanged();
+                }
+                else
+                {
+                    settings.LogoBase64 = "";
+                    settings.LogoName = "";
+                    modManagerService.SaveSettings(settings);
+                };
+                await jsRuntime.InvokeVoidAsync("setLogo", settings.LogoBase64);      
+            }
+        }
+        catch (Exception ex)
+        {
+            // Handle any exceptions that may occur
+            Console.WriteLine($"Error picking file: {ex.Message}");
         }
 
     }
     private async void OnDeleteDB()
     {
-        modManagerService.DeleteLocalDb();
-        var settings = await modManagerService.GetSettings();
-        folderPath = settings.DCSSaveGamesPath;
-        StateHasChanged();
+        var result = await DialogService.OpenAsync("Confirmation", ds =>
+                @<RadzenStack Gap="1.5rem">
+        <p>This operation will delete all your application setting (Mods states, save game folder..), No mods will be uninstall from your computer. Do you want to continue ?</p>
 
-    }
-    private async void  OnChange(string value, string name)
-    {
-        if (value != null)
+
+                    <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+                        <RadzenStack Orientation="Orientation.Horizontal">
+                            <RadzenButton Text="Confirm" Click="() => ds.Close(true)" />
+                            <RadzenButton Text="Cancel" Click="() => ds.Close(false)" ButtonStyle="ButtonStyle.Light" />
+                        </RadzenStack>
+                    </RadzenStack>
+        </RadzenStack>
+    );
+        if (result != null && result == true)
         {
-            settings.LogoBase64 = value;
-            settings.LogoName = name;
-            modManagerService.SaveSettings(settings);
+            modManagerService.DeleteLocalDb();
+            var settings = await modManagerService.GetSettings();
+            folderPath = settings.DCSSaveGamesPath;
+            isLogoDisable = true;
+            await jsRuntime.InvokeVoidAsync("setLogo", "");
+            StateHasChanged();
         }
-        else
-        {
-            settings.LogoBase64 = "";
-            settings.LogoName = "";
-            modManagerService.SaveSettings(settings);
-        };
-        StateHasChanged();
 
-        // Action callback = () =>
-        // {
-        //     src = settings.LogoBase64;
-        //     StateHasChanged();
-        // };
-        // JsRuntime.InvokeAsync("RegisterTransitionsCompletedEventListener", "logo", callback);
-
-        // await jsRuntime.InvokeAsync<object>("changeLogo");
+    }
+    // private async void  OnChange(string value, string name)
+    // {
+    //     if (value != null)
+    //     {
+    //         settings.LogoBase64 = value;
+    //         settings.LogoName = name;
+    //         modManagerService.SaveSettings(settings);   
+    //         StateHasChanged();
+    //     }
+    //     else
+    //     {
+    //         settings.LogoBase64 = "";
+    //         settings.LogoName = "";
+    //         modManagerService.SaveSettings(settings);
+    //     };
+    //     await jsRuntime.InvokeVoidAsync("setLogo", settings.LogoBase64);
         
+    // }
+
+
+    // void OnError(UploadErrorEventArgs args, string name)
+    // {
+    //     ;
+    // }
+
+    /// <summary>
+    /// show error messages as dialog
+    /// </summary>
+    /// <param name="line1"></param>
+    /// <param name="line2"></param>
+    /// <param name="line3"></param>
+    /// <param name="line4"></param>
+    /// <returns></returns>
+    async Task ShowBusyDialog(string title = "Loading...", string line1 = "", string line2 = "", string line3 = "", string line4 = "")
+    {
+        await BusyDialog(title, line1, line2, line3, line4);
     }
 
-    void OnError(UploadErrorEventArgs args, string name)
+    async Task BusyDialog(string title, string line1, string line2, string line3, string line4)
     {
-        ;
+        await DialogService.OpenAsync("Please Wait...", ds =>
+    @<div>
+        <div class="row">
+            <div class="col">
+                <RadzenProgressBarCircular ProgressBarStyle="ProgressBarStyle.Primary" Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Large" />
+            </div>
+            <div class="col">
+                <RadzenCard Style="width:100%">
+                    <p><h4>@title</h4></p>
+                    <table class="table">
+
+                        <tbody>
+                            <tr><b>@line1</b></tr>
+                            <tr>
+                                <td>@line2</td>
+                            </tr>
+                            <tr>
+                                <td>@line3</td>
+                            </tr>
+                            <tr>
+                                <td>@line4</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </RadzenCard>
+
+            </div>
+        </div>
+    </div>
+    , new DialogOptions() { ShowTitle = true, Width = "650px", Height = "300px", Resizable = true, Draggable = true });
+        await Task.Delay(2000);
     }
+    /// <summary>
+    /// close busy dialog
+    /// </summary>
+    /// <returns></returns>
+    async Task CloseBusyDialog()
+    {
+        DialogService.Close();
+    }
+
+    /// <summary>
+    /// show error messages as dialog
+    /// </summary>
+    /// <param name="errorMessage"></param>
+    /// <returns></returns>
+    async Task ShowErrorMessages(string errorMessage)
+    {
+        DialogService.Alert(errorMessage, "Error", new AlertOptions() { OkButtonText = "Ok" });
+
+    }
+
 }   
