@@ -16,6 +16,7 @@ using System.Web;
 using System.Net.WebSockets;
 using SharpCompress;
 using eoj12.DCS.Toolkit.Data;
+using System.IO.Pipelines;
 
 namespace eoj12.DCS.Toolkit.Services
 {
@@ -292,7 +293,7 @@ namespace eoj12.DCS.Toolkit.Services
             DirectoryInfo directoryInfo = new DirectoryInfo(LocalDb.Settings.DCSSaveGamesPath + modPath);
             if (directoryInfo.Exists)
             {
-                var directories = directoryInfo.GetDirectories();
+                var directories = directoryInfo.GetDirectories().Where(d => !d.FullName.ToLower().EndsWith("tacview")).ToList(); //exclude Tacview
                 foreach (var modDirectory in directories)
                 {
                     Mod localMod;
@@ -397,7 +398,7 @@ namespace eoj12.DCS.Toolkit.Services
         /// <param name="file"></param>
         /// <param name="udpate"></param>
         /// <returns></returns>
-        public async Task<Mod> AddMod(Mod mod, IBrowserFile file, bool udpate)
+        public async Task<Mod> AddMod(Mod mod, FileResult file, bool udpate)
         {
             var dbMod = LocalDb.Mods.FirstOrDefault(m => m.Title.ToLower() == mod.Title.ToLower());
             WebFileInfo fileInfo = null;
@@ -474,6 +475,22 @@ namespace eoj12.DCS.Toolkit.Services
             if (googleUrl != webFileInfo.ResponseUri.ToString())
                 webFileInfo = await GetWebFileInfo(googleUrl);
             return webFileInfo;
+        }
+
+        public static async Task<WebFileInfo> GetWebFileInfo(FileResult file)
+        {
+            WebFileInfo modInfo = null;
+            //Get file size from FileResult
+            
+
+
+            modInfo = new WebFileInfo(file.FileName, Path.GetExtension(file.FileName), 0,DateTime.Now, file.ContentType, null);
+            var memoryStream = new MemoryStream();
+            //await file.OpenReadStream(maxAllowedSize: 3221225472, cancellationToken: default).CopyToAsync(memoryStream);
+            var bufferStream = await file.OpenReadAsync();
+            await bufferStream.CopyToAsync(memoryStream);
+            modInfo.Stream = memoryStream;
+            return modInfo;
         }
 
         public static async Task<WebFileInfo> GetWebFileInfo(IBrowserFile file)
@@ -750,7 +767,7 @@ namespace eoj12.DCS.Toolkit.Services
         public List<ModEntry> ExtractFileFromStream(WebFileInfo webFileInfo, string saveGamePath, string targetFolder)
         {
             List<ModEntry> entries = null;
-            if (IsValidZipFile(webFileInfo.Stream))
+            if (webFileInfo.FileExtension == ".zip")
             {
                 entries = ExtractZipFromStream(webFileInfo.Stream, saveGamePath, targetFolder);
             }

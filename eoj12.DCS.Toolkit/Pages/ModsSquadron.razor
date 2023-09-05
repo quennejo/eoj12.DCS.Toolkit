@@ -8,7 +8,7 @@
 @using eoj12.DCS.Toolkit.Services;
 
 
-<ModsDataGrid Mods="Mods"  DefinitionMode="true" ShowScanMod="false" ShowIsEnableButton="false" ShowLoadFileDefinition=true></ModsDataGrid>
+<ModsDataGrid Mods="Mods" DefinitionMode="true" ShowScanMod="false" ShowIsEnableButton="false" ShowFilters="true" ShowLoadFileDefinition=true></ModsDataGrid>
 @code {
     RadzenDataGrid<Mod> modsGrid;
     private string Url = "https://drive.google.com/uc?id=1AEDTUYVP9Zj0EEeEyjKBsLyLeifNQgr4&export=download";
@@ -21,6 +21,7 @@
         try
         {
             await Task.Run(() => Mods = new List<Mod>());
+
 
         }
         catch (Exception ex)

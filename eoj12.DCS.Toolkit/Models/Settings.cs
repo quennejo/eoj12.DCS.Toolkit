@@ -12,5 +12,6 @@ namespace eoj12.DCS.Toolkit.Models
         public string SquadronUrl{ get; set; }
         public string LogoBase64 { get; set; }
         public string LogoName { get; set; }
+        public bool IsAdmin { get; set; }
     }
 }

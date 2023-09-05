@@ -17,9 +17,17 @@
     <RadzenButton ButtonStyle="ButtonStyle.Primary" Icon="add_circle_outline" class="mt-2 mb-4" Text="Select Folder" Click="@OnSelectFolderClick" />
     <br /><br />
     <RadzenText TextStyle="TextStyle.DisplayH5" TagName="TagName.H2">Logo :</RadzenText>
-   @*  <RadzenFileInput TValue="string" class="w-100" @bind-Value=@settings.LogoBase64 @bind-FileName=@settings.LogoName @bind-FileSize=@fileSize
-                     Change=@(args => OnChange(args, "FileInput")) Error=@(args => OnError(args, "FileInput")) Accept=".png" /> *@
     <RadzenButton ButtonStyle="ButtonStyle.Primary" Icon="add_circle_outline" class="mt-2 mb-4" Text="Select your logo" Click="@OnSelectLogoClick" Disabled="@isLogoDisable" />
+    <br /><br />
+    <RadzenText TextStyle="TextStyle.DisplayH5" TagName="TagName.H2">Enable the Squadron or Server admin functions</RadzenText>
+    @if (settings.IsAdmin)
+    {
+        <RadzenButton Icon="toggle_on" ButtonStyle="ButtonStyle.Success" Variant="Variant.Flat" Size="ButtonSize.Large" Click="@(args => DisableAdmin())" @onclick:stopPropagation="true" />
+    }
+    else 
+    {
+        <RadzenButton Icon="toggle_off" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Large" Click="@(args => EnableAdmin())" @onclick:stopPropagation="true" />
+    }
     <br /><br />
     <RadzenText TextStyle="TextStyle.DisplayH5" TagName="TagName.H2">Application Folder  :</RadzenText>
     <RadzenTextBox Disabled="true" class="w-100" @bind-Value=appDataPath />
@@ -60,6 +68,21 @@
         }
 
     }
+
+    private async void EnableAdmin()
+    {
+        settings.IsAdmin = true;
+        modManagerService.SaveSettings(settings);
+
+    }
+
+    private async void DisableAdmin()
+    {
+        settings.IsAdmin = false;
+        modManagerService.SaveSettings(settings);
+
+    }
+
     private async void OnSelectFolderClick()
     {
         FolderPickerResult folder = await FolderPicker.PickAsync(default);
@@ -149,30 +172,6 @@
         }
 
     }
-    // private async void  OnChange(string value, string name)
-    // {
-    //     if (value != null)
-    //     {
-    //         settings.LogoBase64 = value;
-    //         settings.LogoName = name;
-    //         modManagerService.SaveSettings(settings);   
-    //         StateHasChanged();
-    //     }
-    //     else
-    //     {
-    //         settings.LogoBase64 = "";
-    //         settings.LogoName = "";
-    //         modManagerService.SaveSettings(settings);
-    //     };
-    //     await jsRuntime.InvokeVoidAsync("setLogo", settings.LogoBase64);
-        
-    // }
-
-
-    // void OnError(UploadErrorEventArgs args, string name)
-    // {
-    //     ;
-    // }
 
     /// <summary>
     /// show error messages as dialog
