@@ -755,27 +755,30 @@
     {
         try
         {
-
-            ShowBusyDialog("Disable all mods..");
-            string filter = "";
-            var column = _modsGrid.ColumnsCollection.Where(c => c.Property == "TargetFolder").FirstOrDefault();
-            if (column != null)
+            InvokeAsync(async () =>
             {
-                filter = column.FilterValue.ToString();
-            }
-            if (!string.IsNullOrEmpty(filter)) { 
-                Mods.ForEach(m =>
+                await Task.Delay(500);
+                string filter = "";
+                var column = _modsGrid.ColumnsCollection.Where(c => c.Property == "TargetFolder").FirstOrDefault();
+                if (column != null)
                 {
-                    if (m.IsDisable == false && m.TargetFolder==filter)
+                    filter = column.FilterValue?.ToString();
+                }
+                if (!string.IsNullOrEmpty(filter))
+                {
+                    Mods.ForEach(m =>
+                {
+                    if (m.IsDisable == false && m.TargetFolder == filter)
                     {
                         modManagerService.DisableMod(m);
                         m.IsDisable = true;
                         m.IsDownloaded = true;
                     }
                 });
-            }else
-            {
-                Mods.ForEach(m =>
+                }
+                else
+                {
+                    Mods.ForEach(m =>
                 {
                     if (m.IsDisable == false)
                     {
@@ -784,18 +787,20 @@
                         m.IsDownloaded = true;
                     }
                 });
-            }
-            
-            await _modsGrid.Reload();
-            CloseBusyDialog();
-
+                }
+                await _modsGrid.Reload();
+                DialogService.Close();
+            });
+            await ShowBusyDialog("Disabling Mods..");
         }
         catch (Exception ex)
         {
             CloseBusyDialog();
             await ShowErrorMessages(ex.Message);
+ 
         }
     }
+
     /// <summary>
     /// enable all mods
     /// </summary>
@@ -803,46 +808,50 @@
     private async Task EnableAll()
     {
         try
-        {
-            ShowBusyDialog("Enable all mods.." );
-            string filter = "";
-            var column = _modsGrid.ColumnsCollection.Where(c => c.Property == "TargetFolder").FirstOrDefault();
-            if (column != null)
+        {       
+            InvokeAsync(async () =>
             {
-                filter = column.FilterValue.ToString();
-            }
-            if (!string.IsNullOrEmpty(filter))
-            {
-                Mods.ForEach(m =>
-            {
-                if (m.IsDisable && m.TargetFolder == filter)
+                await Task.Delay(500);
+                string filter = "";
+                var column = _modsGrid.ColumnsCollection.Where(c => c.Property == "TargetFolder").FirstOrDefault();
+                if (column != null)
                 {
-                modManagerService.EnableMod(m);
-                m.IsDisable = false;
-                m.IsDownloaded = true;
+                    filter = column.FilterValue?.ToString();
                 }
-            });
-            }
-            else
-            {
-                Mods.ForEach(m =>
+                if (!string.IsNullOrEmpty(filter))
                 {
-                    if (m.IsDisable)
+                    Mods.ForEach(m =>
+                {
+                    if (m.IsDisable && m.TargetFolder == filter)
                     {
-                        modManagerService.EnableMod(m);
-                        m.IsDisable = false;
-                        m.IsDownloaded = true;
+                    modManagerService.EnableMod(m);
+                    m.IsDisable = false;
+                    m.IsDownloaded = true;
                     }
                 });
-            }
-            await _modsGrid.Reload();
-            CloseBusyDialog();
-
+                }
+                else
+                {
+                    Mods.ForEach(m =>
+                    {
+                        if (m.IsDisable)
+                        {
+                            modManagerService.EnableMod(m);
+                            m.IsDisable = false;
+                            m.IsDownloaded = true;
+                        }
+                    });
+                }
+                await _modsGrid.Reload();
+                CloseBusyDialog();
+        });
+            await ShowBusyDialog("Enabling Mods..");
         }
         catch (Exception ex)
         {
             CloseBusyDialog();
             await ShowErrorMessages(ex.Message);
+
         }
     }
 
