@@ -263,9 +263,9 @@ namespace eoj12.DCS.Toolkit.Services
         public List<Mod> ScanMods()
         {
             List<Mod> localMods = new List<Mod>();
-            ScanModsFolder(localMods, Folders.AIRCRAFT);
-            ScanModsFolder(localMods, Folders.TECH);
-            ScanModsFolder(localMods, Folders.LIVERIES);
+            localMods.AddRange(ScanModsFolder( Folders.AIRCRAFT));
+            localMods.AddRange(ScanModsFolder( Folders.TECH));
+            localMods.AddRange(ScanModsFolder( Folders.LIVERIES));
             return localMods.OrderBy(m => m.Title).ToList();
         }
 
@@ -288,8 +288,9 @@ namespace eoj12.DCS.Toolkit.Services
         /// </summary>
         /// <param name="localMods"></param>
         /// <param name="modPath"></param>
-        private void ScanModsFolder(List<Mod> localMods, string modPath)
+        private List<Mod> ScanModsFolder( string modPath)
         {
+            List<Mod> localMods = new List<Mod>();
             DirectoryInfo directoryInfo = new DirectoryInfo(LocalDb.Settings.DCSSaveGamesPath + modPath);
             if (directoryInfo.Exists)
             {
@@ -320,7 +321,7 @@ namespace eoj12.DCS.Toolkit.Services
             foreach (var localMod in localMods)
             {
                 //find parent mod
-                string searchKey = $@"\{localMod.Title}\";
+                string searchKey = modPath == Names.Folders.LIVERIES ? $@"\{localMod.Title}\{localMod.Folder}\" : $@"\{localMod.Title}\";
                 var dbDefinitionMod = LocalDb.Mods.FirstOrDefault(m => m.IsModDefinition && m.ModEntries.Any(e => e.Name.ToLower() == "" && e.Path.EndsWith($@"{localMod.Title}/") || e.Path.Contains(searchKey)));
                 var dbMod = LocalDb.Mods.FirstOrDefault(m => !m.IsModDefinition && m.Folder.ToLower() == localMod.Folder.ToLower());
                 if (dbDefinitionMod != null)
@@ -349,6 +350,7 @@ namespace eoj12.DCS.Toolkit.Services
 
             }
             SaveLocalDb();
+            return localMods;
         }
 
         /// <summary>
@@ -605,7 +607,7 @@ namespace eoj12.DCS.Toolkit.Services
         {
             List<Mod> dbMods = null;
             //if (mod.IsModDefinition)
-            dbMods = LocalDb.Mods.Where(m => (m.Title.ToLower() == mod.Title.ToLower())
+            dbMods = LocalDb.Mods.Where(m => (m.Title.ToLower() == mod.Title.ToLower() && m.IsModDefinition)
                     || m.Folder.ToLower() == mod.Folder.ToLower() && !m.IsModDefinition).ToList();
             //else
             //    dbMods = LocalDb.Mods.Where(m => m.Folder.ToLower() == mod.Folder.ToLower() && !m.IsModDefinition).ToList();
@@ -630,7 +632,15 @@ namespace eoj12.DCS.Toolkit.Services
                         if (directoryInfo.Exists && directoryInfo.GetFiles().Length == 0)
                         {
                             if (directoryInfo.GetDirectories().Count() == 0)
-                                Directory.Delete(modEntry.Path);
+                            {
+                                try { 
+                                    Directory.Delete(modEntry.Path);
+                                }
+                                catch (Exception ex)
+                                {
+                                    //A directory can have system files on it   
+                                }
+                            }
                         }
                     }
                     LocalDb.Mods.Remove(dbMod);
