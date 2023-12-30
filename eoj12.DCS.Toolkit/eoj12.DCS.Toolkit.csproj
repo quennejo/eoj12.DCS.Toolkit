@@ -36,7 +36,7 @@
         <HoursBetweenUpdateChecks>0</HoursBetweenUpdateChecks>
         <AssemblyName>eoj12.DCS.Toolkit</AssemblyName>
         <AppxPackageSigningEnabled>True</AppxPackageSigningEnabled>
-        <PackageCertificateThumbprint>F7EDB169D4F946CB2BE4228FAE411800151F116C</PackageCertificateThumbprint>
+        <PackageCertificateThumbprint>ABA678F7A2F8A741DA2BF9936477ABFA96738B60</PackageCertificateThumbprint>
         <AppxPackageSigningTimestampDigestAlgorithm>SHA256</AppxPackageSigningTimestampDigestAlgorithm>
         <GenerateTemporaryStoreCertificate>True</GenerateTemporaryStoreCertificate>
         <DefaultLanguage>en</DefaultLanguage>

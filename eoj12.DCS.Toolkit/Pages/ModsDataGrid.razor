@@ -676,7 +676,7 @@
         try
         {
             ShowBusyDialog($"Updating", $"{modDefinition.Title}", $"Target Folder : {modDefinition.TargetFolder}", $"Size : {modDefinition.Size}", $"Version : {modDefinition.Version}");
-            await modManagerService.DownloadMod(modDefinition);
+            await modManagerService.DownloadMod(modDefinition,true);
             StateHasChanged();
             CloseBusyDialog();
         }

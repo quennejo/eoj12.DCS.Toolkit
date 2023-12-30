@@ -155,8 +155,8 @@ namespace eoj12.DCS.Toolkit.Services
                     squadronMod.IsDisable = false;
                     squadronMod.IsPreviousVersion = false;
                     squadronMod.IsDownloaded = false;
-                    var potentialMatch =dbModDefinitionList.FirstOrDefault(m =>( m.Title.ToLower().Contains(squadronMod.Title.ToLower()) 
-                                                                                || squadronMod.Title.ToLower().Contains(m.Title.ToLower())) 
+                    var potentialMatch =dbModDefinitionList.FirstOrDefault(m =>( m.Title.Replace("_","").Replace("-","").Replace(" ","").ToLower().Contains(squadronMod.Title.Replace("_", "").Replace("-", "").Replace(" ", "").ToLower()) 
+                                                                                || squadronMod.Title.Replace("_", "").Replace("-", "").Replace(" ", "").ToLower().Contains(m.Title.Replace("_", "").Replace("-", "").Replace(" ", "").ToLower())) 
                                                                                 && m.TargetFolder.ToLower() == squadronMod.TargetFolder.ToLower()
                                                                                 && m.Version.ToLower() != squadronMod.Version.ToLower()
                                                                                 && !m.IsModDefinition);
@@ -216,8 +216,8 @@ namespace eoj12.DCS.Toolkit.Services
             var url = mod.Url.ToString();
             var webFileInfo = await DownloadFileAsync(url);
             mod.IsDownloading = false;
-            //if(Update)
-            //    DeleteMod(mod);
+            if(Update)
+                DeleteMod(mod);
             mod.ModEntries = ExtractFileFromStream(webFileInfo, LocalDb.Settings.DCSSaveGamesPath, mod.TargetFolder);
             mod.IsDownloaded = true;
             mod.IsPreviousVersion = false;
