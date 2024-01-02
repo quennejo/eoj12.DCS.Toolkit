@@ -5,6 +5,7 @@
 @using eoj12.DCS.Toolkit.Utilites;
 
 @inject DialogService DialogService
+@inject NavigationManager NavigationManager;
 @inject IJSRuntime jsRuntime
 
 
@@ -136,7 +137,8 @@
                     settings.LogoName = "";
                     modManagerService.SaveSettings(settings);
                 };
-                await jsRuntime.InvokeVoidAsync("setLogo", settings.LogoBase64);      
+                StateHasChanged();
+                NavigationManager.NavigateTo("AppSettings", true);
             }
         }
         catch (Exception ex)
