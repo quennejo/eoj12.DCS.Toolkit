@@ -518,6 +518,7 @@ namespace eoj12.DCS.Toolkit.Services
             //Uri retUri = null;
             WebFileInfo modInfo = null;
             HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+            request.Timeout = 3600000;//60 minutes
             request.Method = "HEAD";
             HttpWebResponse response = (HttpWebResponse)request.GetResponse();
             string fileName = "";

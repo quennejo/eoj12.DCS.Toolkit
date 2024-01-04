@@ -90,6 +90,10 @@
                 <RadzenButton ButtonStyle="ButtonStyle.Success" Icon="toggle_on" class="mt-2 mb-4" Text="Enable Mods" Click="@EnableAll" />
                 <RadzenButton ButtonStyle="ButtonStyle.Success" Icon="toggle_off" class="mt-2 mb-4" Text="Disable Mods" Click="@DisableAll" Shade="Shade.Lighter" />
             }
+            @if (DefinitionMode && Mods.Any(m => m.IsPotentialMatch)){
+                <RadzenImage Src="/spacer.png" style="width: 50px;" />
+                <RadzenButton ButtonStyle="ButtonStyle.Primary" Icon="auto_fix_normal" class="mt-2 mb-4" Text="Match All" Click="@MatchAll" />
+            }
             </div>
         </div>
     </div>
@@ -583,9 +587,9 @@
                 {
                     Mods.Remove(mod);
                     await _modsGrid.Reload();
-                
+
                 }
-                    
+
             }
             else
             {
@@ -619,7 +623,7 @@
         ;
         //console.Log($"{args.Message}");
     }
-   
+
     private async Task DownloadFileDefinition()
     {
         try
@@ -634,7 +638,7 @@
         catch (Exception ex)
         {
             CloseBusyDialog();
-             if (ex.Message.Contains("403"))
+            if (ex.Message.Contains("403"))
                 await ShowErrorMessages("Your limit has been exceeded on Google drive. Please try later..");
             else
                 await ShowErrorMessages(ex.Message);
@@ -689,6 +693,77 @@
                 await ShowErrorMessages(ex.Message);
 
         }    
+    }
+    /// <summary>
+    /// Match mod
+    /// </summary>
+    /// <param name="mod"></param>
+    /// <returns></returns>
+    private async Task MatchAll()
+    {
+        try
+        {
+
+            ;
+                    var result = await DialogService.OpenAsync("Confirm match", ds =>
+    @<RadzenStack Gap="1.5rem">
+        <p>We have found a potential match on your local drive that could fit the squadron mod definition.</p>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Description</th>
+                    <th>TargetFolder</th>
+                    <th>Version</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var mod in Mods)
+            {
+                if(mod.IsPotentialMatch){
+                <tr>
+                    <td>@mod.PotentialMatch.Title</td>
+                    <td>@mod.PotentialMatch.Description</td>
+                    <td>@mod.PotentialMatch.TargetFolder</td>
+                    <td>@mod.PotentialMatch.Version</td>
+                </tr>
+                }
+            }
+    
+         
+
+            </tbody>
+        </table>
+
+        <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+            <RadzenStack Orientation="Orientation.Horizontal">
+                <RadzenButton Text="Confirm" Click="() => ds.Close(true)" />
+                <RadzenButton Text="Cancel" Click="() => ds.Close(false)" ButtonStyle="ButtonStyle.Light" />
+            </RadzenStack>
+        </RadzenStack>
+    </RadzenStack>
+    );
+            if (result != null && result == true)
+            {
+                if (Mods.Any(m => m.IsPotentialMatch))
+                {
+                    Mods.Where(m => m.IsPotentialMatch).ToList().ForEach(mod =>
+                    {
+                        modManagerService.Match(mod);
+                        mod.IsPotentialMatch = false;
+                        mod.IsDownloaded = true;
+                    });
+                    modManagerService.ScanMods();
+                    await _modsGrid.Reload();
+                    StateHasChanged();
+                }
+            }
+
+        }
+        catch (Exception ex)
+        {
+            await ShowErrorMessages(ex.Message);
+        }
     }
     /// <summary>
     /// Match mod

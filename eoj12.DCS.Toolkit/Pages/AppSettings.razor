@@ -169,8 +169,8 @@
             var settings = await modManagerService.GetSettings();
             folderPath = settings.DCSSaveGamesPath;
             isLogoDisable = true;
-            await jsRuntime.InvokeVoidAsync("setLogo", "");
-            StateHasChanged();
+            StateHasChanged();                
+            NavigationManager.NavigateTo("AppSettings", true);
         }
 
     }
