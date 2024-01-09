@@ -1,2 +1,3 @@
 ﻿# .gitignore
+appsettings.json
 appsettings.local.json
