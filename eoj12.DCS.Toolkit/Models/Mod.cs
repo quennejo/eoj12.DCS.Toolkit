@@ -84,14 +84,14 @@ namespace eoj12.DCS.Toolkit.Models
             }
         }
 
-        public static async Task<List<Mod>> DeserializeObject(Stream stream)
-        {
-            using (StreamReader reader = new StreamReader(stream))
-            {
-                string jsonString = await reader.ReadToEndAsync();
-                return JsonSerializer.Deserialize<List<Mod>>(jsonString);
-            }
-        }
+        //public static async Task<List<Mod>> DeserializeObject(Stream stream)
+        //{
+        //    using (StreamReader reader = new StreamReader(stream))
+        //    {
+        //        string jsonString = await reader.ReadToEndAsync();
+        //        return JsonSerializer.Deserialize<List<Mod>>(jsonString);
+        //    }
+        //}
 
         public Mod CopyTo(Mod mod, bool includeEntries = true,bool includeStatusProperties=true)
         {

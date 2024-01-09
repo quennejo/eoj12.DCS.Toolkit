@@ -17,6 +17,17 @@ using System.Net.WebSockets;
 using SharpCompress;
 using eoj12.DCS.Toolkit.Data;
 using System.IO.Pipelines;
+using Google.Apis.Auth.OAuth2;
+using Google.Apis.Services;
+using Google.Apis.Drive.v3;
+using Google.Apis.Download;
+using Google.Apis.Util.Store;
+using Google.Apis.Auth.OAuth2.Flows;
+using Google.Apis.Auth.OAuth2.Responses;
+using static Google.Apis.Drive.v3.DriveService;
+using System.IO.Pipes;
+
+
 
 namespace eoj12.DCS.Toolkit.Services
 {
@@ -138,10 +149,11 @@ namespace eoj12.DCS.Toolkit.Services
         /// </summary>
         /// <param name="stream"></param>
         /// <returns></returns>
-        public async Task<List<Mod>> DownloadFileDefinitionAsync(Stream stream)
+        //public async Task<List<Mod>> DownloadFileDefinitionAsync(Stream stream)
+        public async Task<List<Mod>> DownloadFileDefinitionAsync(MemoryStream memoryStream)
         {
             List<Mod> mods = new List<Mod>();
-            var squadronModeDefinitionList = await Mod.DeserializeObject(stream);
+            var squadronModeDefinitionList =  Mod.DeserializeObject(memoryStream);
             var dbModDefinitionList = LocalDb.CopyMods(false);
 
 
@@ -155,8 +167,8 @@ namespace eoj12.DCS.Toolkit.Services
                     squadronMod.IsDisable = false;
                     squadronMod.IsPreviousVersion = false;
                     squadronMod.IsDownloaded = false;
-                    var potentialMatch =dbModDefinitionList.FirstOrDefault(m =>( m.Title.Replace("_","").Replace("-","").Replace(" ","").ToLower().Contains(squadronMod.Title.Replace("_", "").Replace("-", "").Replace(" ", "").ToLower()) 
-                                                                                || squadronMod.Title.Replace("_", "").Replace("-", "").Replace(" ", "").ToLower().Contains(m.Title.Replace("_", "").Replace("-", "").Replace(" ", "").ToLower())) 
+                    var potentialMatch = dbModDefinitionList.FirstOrDefault(m => (m.Title.Replace("_", "").Replace("-", "").Replace(" ", "").ToLower().Contains(squadronMod.Title.Replace("_", "").Replace("-", "").Replace(" ", "").ToLower())
+                                                                                || squadronMod.Title.Replace("_", "").Replace("-", "").Replace(" ", "").ToLower().Contains(m.Title.Replace("_", "").Replace("-", "").Replace(" ", "").ToLower()))
                                                                                 && m.TargetFolder.ToLower() == squadronMod.TargetFolder.ToLower()
                                                                                 && m.Version.ToLower() != squadronMod.Version.ToLower()
                                                                                 && !m.IsModDefinition);
@@ -200,7 +212,7 @@ namespace eoj12.DCS.Toolkit.Services
                 }
 
             }
-            mods=mods.OrderBy(m => m.Title).ToList();
+            mods = mods.OrderBy(m => m.Title).ToList();
             return mods;
         }
 
@@ -210,13 +222,13 @@ namespace eoj12.DCS.Toolkit.Services
         /// <param name="mod"></param>
         /// <param name="Update">Fals by Default</param>
         /// <returns></returns>
-        public async Task<Mod> DownloadMod(Mod mod, bool Update= false) {
+        public async Task<Mod> DownloadMod(Mod mod, bool Update = false) {
 
 
             var url = mod.Url.ToString();
             var webFileInfo = await DownloadFileAsync(url);
             mod.IsDownloading = false;
-            if(Update)
+            if (Update)
                 DeleteMod(mod);
             mod.ModEntries = ExtractFileFromStream(webFileInfo, LocalDb.Settings.DCSSaveGamesPath, mod.TargetFolder);
             mod.IsDownloaded = true;
@@ -237,12 +249,12 @@ namespace eoj12.DCS.Toolkit.Services
         /// <param name="mod"></param>
         public async void Match(Mod mod)
         {
-            var dbMod = LocalDb.Mods.FirstOrDefault(m =>!m.IsModDefinition &&  m.Title == mod.PotentialMatch.Title && m.TargetFolder.ToLower() == mod.PotentialMatch.TargetFolder.ToLower());
-            
+            var dbMod = LocalDb.Mods.FirstOrDefault(m => !m.IsModDefinition && m.Title == mod.PotentialMatch.Title && m.TargetFolder.ToLower() == mod.PotentialMatch.TargetFolder.ToLower());
+
             if (dbMod != null)
             {
-        
-                dbMod.Title= mod.Title;
+
+                dbMod.Title = mod.Title;
                 dbMod.Description = mod.Description;
                 dbMod.Version = mod.Version;
                 dbMod.IsDownloaded = true;
@@ -251,7 +263,7 @@ namespace eoj12.DCS.Toolkit.Services
                 dbMod.Url = mod.Url;
                 mod.IsPotentialMatch = false;
                 mod.PotentialMatch = null;
-                
+
             }
             SaveLocalDb();
         }
@@ -263,9 +275,9 @@ namespace eoj12.DCS.Toolkit.Services
         public List<Mod> ScanMods()
         {
             List<Mod> localMods = new List<Mod>();
-            localMods.AddRange(ScanModsFolder( Folders.AIRCRAFT));
-            localMods.AddRange(ScanModsFolder( Folders.TECH));
-            localMods.AddRange(ScanModsFolder( Folders.LIVERIES));
+            localMods.AddRange(ScanModsFolder(Folders.AIRCRAFT));
+            localMods.AddRange(ScanModsFolder(Folders.TECH));
+            localMods.AddRange(ScanModsFolder(Folders.LIVERIES));
             return localMods.OrderBy(m => m.Title).ToList();
         }
 
@@ -288,7 +300,7 @@ namespace eoj12.DCS.Toolkit.Services
         /// </summary>
         /// <param name="localMods"></param>
         /// <param name="modPath"></param>
-        private List<Mod> ScanModsFolder( string modPath)
+        private List<Mod> ScanModsFolder(string modPath)
         {
             List<Mod> localMods = new List<Mod>();
             DirectoryInfo directoryInfo = new DirectoryInfo(LocalDb.Settings.DCSSaveGamesPath + modPath);
@@ -317,7 +329,7 @@ namespace eoj12.DCS.Toolkit.Services
                     }
                 }
             }
- 
+
             foreach (var localMod in localMods)
             {
                 //find parent mod
@@ -473,7 +485,7 @@ namespace eoj12.DCS.Toolkit.Services
         public static async Task<WebFileInfo> GetWebFileInfoAndFixGoogleUrl(string url)
         {
             var webFileInfo = await GetWebFileInfo(url);
-            var googleUrl = await FixGoogleUrl(webFileInfo);
+            var googleUrl = await FormatGoogleUrlWithToken(webFileInfo);
             if (googleUrl != webFileInfo.ResponseUri.ToString())
                 webFileInfo = await GetWebFileInfo(googleUrl);
             return webFileInfo;
@@ -483,10 +495,8 @@ namespace eoj12.DCS.Toolkit.Services
         {
             WebFileInfo modInfo = null;
             //Get file size from FileResult
-            
 
-
-            modInfo = new WebFileInfo(file.FileName, Path.GetExtension(file.FileName), 0,DateTime.Now, file.ContentType, null);
+            modInfo = new WebFileInfo(file.FileName, Path.GetExtension(file.FileName), 0, DateTime.Now, file.ContentType, null);
             var memoryStream = new MemoryStream();
             //await file.OpenReadStream(maxAllowedSize: 3221225472, cancellationToken: default).CopyToAsync(memoryStream);
             var bufferStream = await file.OpenReadAsync();
@@ -495,18 +505,18 @@ namespace eoj12.DCS.Toolkit.Services
             return modInfo;
         }
 
-        public static async Task<WebFileInfo> GetWebFileInfo(IBrowserFile file)
-        {
-            WebFileInfo modInfo = null;
-            //var reader = await new StreamReader(file.OpenReadStream()).ReadToEndAsync();
-            //maxAllowedSize : 3Gb
+        //public static async Task<WebFileInfo> GetWebFileInfo(IBrowserFile file)
+        //{
+        //    WebFileInfo modInfo = null;
+        //    //var reader = await new StreamReader(file.OpenReadStream()).ReadToEndAsync();
+        //    //maxAllowedSize : 3Gb
 
-            modInfo = new WebFileInfo(file.Name, Path.GetExtension(file.Name), file.Size, file.LastModified.LocalDateTime, file.ContentType, null);
-            var memoryStream = new MemoryStream();
-            await file.OpenReadStream(maxAllowedSize: 3221225472, cancellationToken: default).CopyToAsync(memoryStream);
-            modInfo.Stream = memoryStream;
-            return modInfo;
-        }
+        //    modInfo = new WebFileInfo(file.Name, Path.GetExtension(file.Name), file.Size, file.LastModified.LocalDateTime, file.ContentType, null);
+        //    var memoryStream = new MemoryStream();
+        //    await file.OpenReadStream(maxAllowedSize: 3221225472, cancellationToken: default).CopyToAsync(memoryStream);
+        //    modInfo.Stream = memoryStream;
+        //    return modInfo;
+        //}
 
         /// <summary>
         /// Get the file info from the url
@@ -542,16 +552,40 @@ namespace eoj12.DCS.Toolkit.Services
             response.Close();
             return modInfo;
         }
+        public static async Task<WebFileInfo> GetWebFileInfo(WebResponse response)
+        {
+
+            WebFileInfo modInfo = null;
+            string fileName = "";
+            string fileExtension = "";
+
+            if (response.Headers["Content-Disposition"] != null)
+            {
+                fileName = response.Headers["Content-Disposition"];
+                fileName = fileName.Replace("attachment; filename=", "");
+                fileName = fileName.Replace("\"", "");
+                fileExtension = Path.GetExtension(fileName);
+            }
+            long fileSize = response.ContentLength;
+            DateTime modificationDate;
+            DateTime.TryParse(response.Headers["Last-Modified"], out modificationDate);
+
+            modInfo = new WebFileInfo(fileName, fileExtension, fileSize, modificationDate, response.ContentType, response.ResponseUri);
+            return modInfo;
+        }
+
+
+
         /// <summary>
         /// Fix the google url
         /// </summary>
         /// <param name="webFileInfo"></param>
         /// <returns></returns>
-        public static async Task<string> FixGoogleUrl(WebFileInfo webFileInfo)
+        public static async Task<string> FormatGoogleUrlWithToken(WebFileInfo webFileInfo)
         {
 
             string returnUrl = webFileInfo.ResponseUri.ToString();
-            if (webFileInfo.ContentType == "text/html; charset=utf-8" && webFileInfo.ResponseUri.Host == "drive.google.com")// && webFileInfo.ResponseUri.ToString().Contains("sharing"))
+            if (webFileInfo.ContentType == "text/html; charset=utf-8" && IsGoogleUrl(webFileInfo.ResponseUri))
             {
 
                 var ids = webFileInfo.ResponseUri.ToString().Split('/');
@@ -564,8 +598,6 @@ namespace eoj12.DCS.Toolkit.Services
                         var parsed = HttpUtility.ParseQueryString(documentId);
                         documentId = parsed["id"];
                     }
-
-
                 }
                 if (string.IsNullOrEmpty(documentId))
                 {
@@ -586,7 +618,10 @@ namespace eoj12.DCS.Toolkit.Services
             }
             return returnUrl;
         }
-
+        public static bool IsGoogleUrl(Uri uri)
+        {
+            return uri.Host == "drive.google.com";
+        }
         /// <summary>
         /// Get the web content
         /// </summary>
@@ -634,7 +669,7 @@ namespace eoj12.DCS.Toolkit.Services
                         {
                             if (directoryInfo.GetDirectories().Count() == 0)
                             {
-                                try { 
+                                try {
                                     Directory.Delete(modEntry.Path);
                                 }
                                 catch (Exception ex)
@@ -754,18 +789,95 @@ namespace eoj12.DCS.Toolkit.Services
         /// <summary>
         /// Download a file from a url
         /// </summary>
-        /// <param name="url"></param>
-        /// <returns></returns>
+        /// <param name = "url" ></ param >
+        /// < returns ></ returns >
         public async Task<WebFileInfo> DownloadFileAsync(string url)
         {
-            var modInfo = await GetWebFileInfoAndFixGoogleUrl(url);// GetWebFileInfo(url);//
-            HttpClient client = new HttpClient();
-            var response = await client.GetAsync(modInfo.ResponseUri);//,HttpCompletionOption.ResponseHeadersRead);
-            response.EnsureSuccessStatusCode();
-            modInfo.Stream = await response.Content.ReadAsStreamAsync();
+            WebFileInfo modInfo = null;
+
+
+            Uri uri = new Uri(url);
+            if (IsGoogleUrl(uri) && LocalDb.Settings.UseGoogleApi)
+            {
+                modInfo =await GoogleService.DownloadFileFromGoogleDrive(url);
+            }
+            else
+            {
+                modInfo = await GetWebFileInfoAndFixGoogleUrl(url);
+                HttpClient client = new HttpClient();
+                client.Timeout = new TimeSpan(1, 0, 0);
+                var response = await client.GetAsync(modInfo.ResponseUri);
+                response.EnsureSuccessStatusCode();
+                modInfo.Stream = (MemoryStream)await response.Content.ReadAsStreamAsync();
+            }
             return modInfo;
 
         }
+        //public async Task<WebFileInfo> DownloadFileAsync(string url)
+        //{
+        //    //WebFileInfo modInfo = new WebFileInfo("455.json", "json", 111, DateTime.Now, "json", new Uri(url));
+        //    //if(IsGoogleUrl(new Uri(url)))  
+        //    //{
+        //    //    url= FixGoogleUrl()
+        //    //}
+        //    WebFileInfo modInfo = DownloadFileFromGoogleDrive("1lg-qsRFR1VjOABReYgFUVTH6q_DzM5fk");
+        //    //modInfo.Stream = stream;
+        //    //const int BUFFER_SIZE = 16 * 1024;
+        //    //string filePath = ModManagerTempPath + @"\TempFile";
+        //    //using (var outputFileStream = File.Create(filePath, BUFFER_SIZE))
+        //    //{
+        //    //    var req = WebRequest.Create(url);
+        //    //    using (var response = req.GetResponse())
+        //    //    {
+        //    //        modInfo= await GetWebFileInfo(response);
+        //    //        using (var responseStream = response.GetResponseStream())
+        //    //        {
+        //    //            var buffer = new byte[BUFFER_SIZE];
+        //    //            int bytesRead;
+        //    //            do
+        //    //            {
+        //    //                bytesRead = responseStream.Read(buffer, 0, BUFFER_SIZE);
+        //    //                outputFileStream.Write(buffer, 0, bytesRead);
+        //    //            } while (bytesRead > 0);
+        //    //            modInfo.Stream = responseStream;
+        //    //        }
+
+        //    //        modInfo.FilePath = url;
+        //    //    }
+        //    //}
+        //    return modInfo;
+        //}
+
+        ///// <summary>
+        ///// Download a file from a url
+        ///// </summary>
+        ///// <param name="url"></param>
+        ///// <returns></returns>
+        //public async Task<WebFileInfo> DownloadFileAsync(string url)
+        //{
+        //    Uri uri = new Uri(url);
+        //    WebFileInfo modInfo = null;
+        //    if (IsGoogleUrl(uri)) {
+
+        //        modInfo = await GetWebFileInfo(url);
+        //        var fileId = HttpUtility.ParseQueryString(uri.Query.ToLower()).Get("id");
+        //        modInfo.Stream = DownloadFileFromGoogleDrive("fileId");
+        //    }
+        //    else
+        //    {
+        //        modInfo = await GetWebFileInfoAndFixGoogleUrl(url);// GetWebFileInfo(url);//
+        //        HttpClient client = new HttpClient();
+        //        client.Timeout = new TimeSpan(1, 0, 0);
+        //        var response = await client.GetAsync(modInfo.ResponseUri);//,HttpCompletionOption.ResponseHeadersRead);                    
+        //        response.EnsureSuccessStatusCode();
+        //        modInfo.Stream = await response.Content.ReadAsStreamAsync();
+        //    }
+        //    return modInfo;
+
+        //}
+
+
+
 
         /// <summary>
         /// Extract a zip file from a stream
@@ -832,12 +944,17 @@ namespace eoj12.DCS.Toolkit.Services
                         }
                         else
                         {
+                            string fileName = Path.GetFileName(modEntry.Path);
+                            string folder = Path.GetFullPath(modEntry.Path).Replace(fileName, "");
+                            EnsureDirectory(folder);
                             // This is a file, extract it to disk
                             using (Stream entryStream = entry.Open())
                             {
                                 using (FileStream output = new FileStream(entryOutputPath, FileMode.Create))
                                 {
+
                                     entryStream.CopyTo(output);
+                                    
                                 }
                             }
                         }

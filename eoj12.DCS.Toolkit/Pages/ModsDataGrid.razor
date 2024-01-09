@@ -191,10 +191,9 @@
         @if (ShowIsDownloadButton & _modToInsert ==null ){
         <RadzenDataGridColumn TItem="Mod" Context="mod" Filterable="false" Sortable="false" TextAlign="TextAlign.Right" Width="55px">
             <Template Context="mod">
-  
                     @if (mod.IsDownloaded & mod.IsPreviousVersion == false)
                     {
-                        <RadzenButton Icon="done" ButtonStyle="ButtonStyle.Success" Variant="Variant.Flat" Size="ButtonSize.Medium" />
+                        <RadzenButton Icon="done" ButtonStyle="ButtonStyle.Success" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => DownloadMod(mod))" @onclick:stopPropagation="true" MouseEnter="@(args => ShowTooltip(args, new TooltipOptions(){ Text = "Downlaod Mod",Position=TooltipPosition.Top}))" />
                     }
                     else if (mod.IsDownloading)
                     {
@@ -666,7 +665,7 @@
             if (ex.Message.Contains("403"))
                 await ShowErrorMessages("Your limit has been exceeded on Google drive. Please try later..");
             else
-                await ShowErrorMessages(ex.Message);
+                await ShowErrorMessages(ex.ToString());
 
         }
     }
@@ -690,7 +689,7 @@
             if (ex.Message.Contains("403"))
                 await ShowErrorMessages("Your limit has been exceeded on Google drive. Please try later..");
             else
-                await ShowErrorMessages(ex.Message);
+                await ShowErrorMessages(ex.ToString());
 
         }    
     }

@@ -1,0 +1,2 @@
+﻿# .gitattributes
+appsettings.json filter=secrets
