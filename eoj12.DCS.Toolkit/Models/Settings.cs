@@ -13,6 +13,6 @@ namespace eoj12.DCS.Toolkit.Models
         public string LogoBase64 { get; set; }
         public string LogoName { get; set; }
         public bool IsAdmin { get; set; }
-        public bool UseGoogleApi { get; set; }
+        public bool UseGoogleApi { get; set; } = false;
     }
 }

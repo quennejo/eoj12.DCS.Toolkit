@@ -51,6 +51,7 @@ namespace eoj12.DCS.Toolkit.Services
             set { _localDb = value; }
         }
 
+
         /// <summary>
         /// Constructor
         /// </summary>
@@ -64,6 +65,7 @@ namespace eoj12.DCS.Toolkit.Services
                 ModManagerTempPath = @$"{LocalDb.Settings.DCSSaveGamesPath}\{General.MOD_MANAGER_TEMP_PATH}";
                 EnsureDirectory(ModManagerTempPath);
             }
+
         }
         /// <summary>
         /// ensure directory exists, if not create it
@@ -153,7 +155,7 @@ namespace eoj12.DCS.Toolkit.Services
         public async Task<List<Mod>> DownloadFileDefinitionAsync(MemoryStream memoryStream)
         {
             List<Mod> mods = new List<Mod>();
-            var squadronModeDefinitionList =  Mod.DeserializeObject(memoryStream);
+            var squadronModeDefinitionList = Mod.DeserializeObject(memoryStream);
             var dbModDefinitionList = LocalDb.CopyMods(false);
 
 
@@ -167,6 +169,7 @@ namespace eoj12.DCS.Toolkit.Services
                     squadronMod.IsDisable = false;
                     squadronMod.IsPreviousVersion = false;
                     squadronMod.IsDownloaded = false;
+                    
                     var potentialMatch = dbModDefinitionList.FirstOrDefault(m => (m.Title.Replace("_", "").Replace("-", "").Replace(" ", "").ToLower().Contains(squadronMod.Title.Replace("_", "").Replace("-", "").Replace(" ", "").ToLower())
                                                                                 || squadronMod.Title.Replace("_", "").Replace("-", "").Replace(" ", "").ToLower().Contains(m.Title.Replace("_", "").Replace("-", "").Replace(" ", "").ToLower()))
                                                                                 && m.TargetFolder.ToLower() == squadronMod.TargetFolder.ToLower()
@@ -176,6 +179,10 @@ namespace eoj12.DCS.Toolkit.Services
                     {
                         squadronMod.IsPotentialMatch = true;
                         squadronMod.PotentialMatch = potentialMatch;
+                    }
+                    else
+                    {
+                        squadronMod.IsPotentialMatch = false;
                     }
                     mods.Add(squadronMod);
                 }
@@ -216,21 +223,20 @@ namespace eoj12.DCS.Toolkit.Services
             return mods;
         }
 
-        /// <summary>
-        /// Download or Update a mod from a url
-        /// </summary>
-        /// <param name="mod"></param>
-        /// <param name="Update">Fals by Default</param>
-        /// <returns></returns>
-        public async Task<Mod> DownloadMod(Mod mod, bool Update = false) {
-
-
+        ///// <summary>
+        ///// Download or Update a mod from a url
+        ///// </summary>
+        ///// <param name="mod"></param>
+        ///// <param name="Update">Fals by Default</param>
+        ///// <returns></returns>
+        public async Task<Mod> DownloadMod(Mod mod, bool Update = false)
+        {
             var url = mod.Url.ToString();
             var webFileInfo = await DownloadFileAsync(url);
             mod.IsDownloading = false;
             if (Update)
                 DeleteMod(mod);
-            mod.ModEntries = ExtractFileFromStream(webFileInfo, LocalDb.Settings.DCSSaveGamesPath, mod.TargetFolder);
+            mod.ModEntries = ArchiveService.ExtractFileFromStream(webFileInfo, LocalDb.Settings.DCSSaveGamesPath, mod.TargetFolder,ModManagerTempPath);
             mod.IsDownloaded = true;
             mod.IsPreviousVersion = false;
             mod.IsModDefinition = true;
@@ -291,7 +297,7 @@ namespace eoj12.DCS.Toolkit.Services
 
             string timeStamp = DateTime.Now.ToString("yyyyMMddhhmmss");
             string fileName = string.Format(@"{0}\Mods_{1}.json", ModManagerPath, timeStamp);
-            Mod.SerializeObject(mods.Select(m => m.CopyTo(m, false, false)).ToList(), fileName);
+            Mod.SerializeObject(mods.Select(m => m.CopyTo(m, false, false,false)).ToList(), fileName);
             return fileName;
         }
 
@@ -418,11 +424,11 @@ namespace eoj12.DCS.Toolkit.Services
             WebFileInfo fileInfo = null;
             if (file != null)
             {
-                fileInfo = await GetWebFileInfo(file);
+                fileInfo = await DownloadService.GetWebFileInfo(file);
             }
             else
             {
-                fileInfo = await GetWebFileInfoAndFixGoogleUrl(mod.Url);
+                fileInfo = await DownloadService.GetWebFileInfoAndFixGoogleUrl(mod.Url);
             }
             if (fileInfo != null && (fileInfo.FileExtension.ToLower() == ".zip" || fileInfo.FileExtension.ToLower() == ".rar"))
             {
@@ -446,7 +452,7 @@ namespace eoj12.DCS.Toolkit.Services
                 }
                 if (udpate)
                 {
-                    dbMod.ModEntries = ExtractFileFromStream(fileInfo, LocalDb.Settings.DCSSaveGamesPath, mod.TargetFolder);
+                    dbMod.ModEntries = ArchiveService.ExtractFileFromStream(fileInfo, LocalDb.Settings.DCSSaveGamesPath, mod.TargetFolder, ModManagerTempPath);
                     LocalDb.Mods.Add(dbMod);
                     SaveLocalDb();
 
@@ -477,33 +483,33 @@ namespace eoj12.DCS.Toolkit.Services
             SaveLocalDb();
         }
 
-        /// <summary>
-        /// Get
-        /// </summary>
-        /// <param name="url"></param>
-        /// <returns></returns>
-        public static async Task<WebFileInfo> GetWebFileInfoAndFixGoogleUrl(string url)
-        {
-            var webFileInfo = await GetWebFileInfo(url);
-            var googleUrl = await FormatGoogleUrlWithToken(webFileInfo);
-            if (googleUrl != webFileInfo.ResponseUri.ToString())
-                webFileInfo = await GetWebFileInfo(googleUrl);
-            return webFileInfo;
-        }
+        ///// <summary>
+        ///// Get
+        ///// </summary>
+        ///// <param name="url"></param>
+        ///// <returns></returns>
+        //public static async Task<WebFileInfo> GetWebFileInfoAndFixGoogleUrl(string url)
+        //{
+        //    var webFileInfo = await GetWebFileInfo(url);
+        //    var googleUrl = await FormatGoogleUrlWithToken(webFileInfo);
+        //    if (googleUrl != webFileInfo.ResponseUri.ToString())
+        //        webFileInfo = await GetWebFileInfo(googleUrl);
+        //    return webFileInfo;
+        //}
 
-        public static async Task<WebFileInfo> GetWebFileInfo(FileResult file)
-        {
-            WebFileInfo modInfo = null;
-            //Get file size from FileResult
+        //public static async Task<WebFileInfo> GetWebFileInfo(FileResult file)
+        //{
+        //    WebFileInfo modInfo = null;
+        //    //Get file size from FileResult
 
-            modInfo = new WebFileInfo(file.FileName, Path.GetExtension(file.FileName), 0, DateTime.Now, file.ContentType, null);
-            var memoryStream = new MemoryStream();
-            //await file.OpenReadStream(maxAllowedSize: 3221225472, cancellationToken: default).CopyToAsync(memoryStream);
-            var bufferStream = await file.OpenReadAsync();
-            await bufferStream.CopyToAsync(memoryStream);
-            modInfo.Stream = memoryStream;
-            return modInfo;
-        }
+        //    modInfo = new WebFileInfo(file.FileName, Path.GetExtension(file.FileName), 0, DateTime.Now, file.ContentType, null);
+        //    var memoryStream = new MemoryStream();
+        //    //await file.OpenReadStream(maxAllowedSize: 3221225472, cancellationToken: default).CopyToAsync(memoryStream);
+        //    var bufferStream = await file.OpenReadAsync();
+        //    await bufferStream.CopyToAsync(memoryStream);
+        //    modInfo.Stream = memoryStream;
+        //    return modInfo;
+        //}
 
         //public static async Task<WebFileInfo> GetWebFileInfo(IBrowserFile file)
         //{
@@ -523,117 +529,118 @@ namespace eoj12.DCS.Toolkit.Services
         /// </summary>
         /// <param name="url"></param>
         /// <returns></returns>
-        public static async Task<WebFileInfo> GetWebFileInfo(string url)
-        {
-            //Uri retUri = null;
-            WebFileInfo modInfo = null;
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
-            request.Timeout = 3600000;//60 minutes
-            request.Method = "HEAD";
-            HttpWebResponse response = (HttpWebResponse)request.GetResponse();
-            string fileName = "";
-            string fileExtension = "";
-            //retUri = response.ResponseUri;
-            if (response.StatusCode == HttpStatusCode.OK)
-            {
-                if (response.Headers["Content-Disposition"] != null)
-                {
-                    fileName = response.Headers["Content-Disposition"];
-                    fileName = fileName.Replace("attachment; filename=", "");
-                    fileName = fileName.Replace("\"", "");
-                    fileExtension = Path.GetExtension(fileName);
-                }
-                long fileSize = response.ContentLength;
-                DateTime modificationDate;
-                DateTime.TryParse(response.Headers["Last-Modified"], out modificationDate);
+        //public static async Task<WebFileInfo> GetWebFileInfo(string url)
+        //{
+        //    //Uri retUri = null;
+        //    WebFileInfo modInfo = null;
+        //    HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+        //    request.Timeout = 3600000;//60 minutes
+        //    request.Method = "HEAD";
+        //    HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+        //    string fileName = "";
+        //    string fileExtension = "";
+        //    //retUri = response.ResponseUri;
+        //    if (response.StatusCode == HttpStatusCode.OK)
+        //    {
+        //        if (response.Headers["Content-Disposition"] != null)
+        //        {
+        //            fileName = response.Headers["Content-Disposition"];
+        //            fileName = fileName.Replace("attachment; filename=", "");
+        //            fileName = fileName.Replace("\"", "");
+        //            fileExtension = Path.GetExtension(fileName);
+        //        }
+        //        long fileSize = response.ContentLength;
+        //        DateTime modificationDate;
+        //        DateTime.TryParse(response.Headers["Last-Modified"], out modificationDate);
 
-                modInfo = new WebFileInfo(fileName, fileExtension, fileSize, modificationDate, response.ContentType, new Uri(url));
-            }
-            response.Close();
-            return modInfo;
-        }
-        public static async Task<WebFileInfo> GetWebFileInfo(WebResponse response)
-        {
+        //        modInfo = new WebFileInfo(fileName, fileExtension, fileSize, modificationDate, response.ContentType, new Uri(url));
+        //    }
+        //    response.Close();
+        //    return modInfo;
+        //}
+        //public static async Task<WebFileInfo> GetWebFileInfo(WebResponse response)
+        //{
 
-            WebFileInfo modInfo = null;
-            string fileName = "";
-            string fileExtension = "";
+        //    WebFileInfo modInfo = null;
+        //    string fileName = "";
+        //    string fileExtension = "";
 
-            if (response.Headers["Content-Disposition"] != null)
-            {
-                fileName = response.Headers["Content-Disposition"];
-                fileName = fileName.Replace("attachment; filename=", "");
-                fileName = fileName.Replace("\"", "");
-                fileExtension = Path.GetExtension(fileName);
-            }
-            long fileSize = response.ContentLength;
-            DateTime modificationDate;
-            DateTime.TryParse(response.Headers["Last-Modified"], out modificationDate);
+        //    if (response.Headers["Content-Disposition"] != null)
+        //    {
+        //        fileName = response.Headers["Content-Disposition"];
+        //        fileName = fileName.Replace("attachment; filename=", "");
+        //        fileName = fileName.Replace("\"", "");
+        //        fileExtension = Path.GetExtension(fileName);
+        //    }
+        //    long fileSize = response.ContentLength;
+        //    DateTime modificationDate;
+        //    DateTime.TryParse(response.Headers["Last-Modified"], out modificationDate);
 
-            modInfo = new WebFileInfo(fileName, fileExtension, fileSize, modificationDate, response.ContentType, response.ResponseUri);
-            return modInfo;
-        }
+        //    modInfo = new WebFileInfo(fileName, fileExtension, fileSize, modificationDate, response.ContentType, response.ResponseUri);
+        //    return modInfo;
+        //}
 
 
 
-        /// <summary>
-        /// Fix the google url
-        /// </summary>
-        /// <param name="webFileInfo"></param>
-        /// <returns></returns>
-        public static async Task<string> FormatGoogleUrlWithToken(WebFileInfo webFileInfo)
-        {
+        ///// <summary>
+        ///// Fix the google url
+        ///// </summary>
+        ///// <param name="webFileInfo"></param>
+        ///// <returns></returns>
+        //public static async Task<string> FormatGoogleUrlWithToken(WebFileInfo webFileInfo)
+        //{
 
-            string returnUrl = webFileInfo.ResponseUri.ToString();
-            if (webFileInfo.ContentType == "text/html; charset=utf-8" && IsGoogleUrl(webFileInfo.ResponseUri))
-            {
+        //    string returnUrl = webFileInfo.ResponseUri.ToString();
+        //    if (webFileInfo.ContentType == "text/html; charset=utf-8" && IsGoogleUrl(webFileInfo.ResponseUri))
+        //    {
 
-                var ids = webFileInfo.ResponseUri.ToString().Split('/');
-                var documentId = "";
-                if (ids.Length > 0 && ids.Length > 5)
-                {
-                    documentId = ids[5].Trim();///.Replace("uc?id=","");
-                    if (documentId.IndexOf("?") > -1)
-                    {
-                        var parsed = HttpUtility.ParseQueryString(documentId);
-                        documentId = parsed["id"];
-                    }
-                }
-                if (string.IsNullOrEmpty(documentId))
-                {
-                    var qs = webFileInfo.ResponseUri.Query; //"userID=16555&gameID=60&score=4542.122&time=343114";
-                    var parsed = HttpUtility.ParseQueryString(qs);
-                    documentId = parsed["id"];
-                }
-                string newUrl = string.Format("https://drive.google.com/uc?export=download&id={0}", documentId);
-                var content = await GetWebContent(newUrl);
-                string confirmToken = "";
-                int intTokenStart = content.LastIndexOf("confirm=t&amp;uuid=");
-                int intTokenEnd = content.IndexOf("\" method=\"post\"");
-                if (intTokenStart != -1 && intTokenEnd != -1)
-                {
-                    confirmToken = content.Substring(intTokenStart, intTokenEnd - intTokenStart).Replace("confirm=t&amp;uuid=", "");
-                }
-                returnUrl = string.Format("https://drive.google.com/uc?export=download&id={0}&confirm=t&uuid={1}", documentId, confirmToken);
-            }
-            return returnUrl;
-        }
-        public static bool IsGoogleUrl(Uri uri)
-        {
-            return uri.Host == "drive.google.com";
-        }
-        /// <summary>
-        /// Get the web content
-        /// </summary>
-        /// <param name="url"></param>
-        /// <returns></returns>
-        static async Task<string> GetWebContent(string url)
-        {
-            using (HttpClient client = new HttpClient())
-            {
-                return await client.GetStringAsync(url);
-            }
-        }
+        //        var ids = webFileInfo.ResponseUri.ToString().Split('/');
+        //        var documentId = "";
+        //        if (ids.Length > 0 && ids.Length > 5)
+        //        {
+        //            documentId = ids[5].Trim();///.Replace("uc?id=","");
+        //            if (documentId.IndexOf("?") > -1)
+        //            {
+        //                var parsed = HttpUtility.ParseQueryString(documentId);
+        //                documentId = parsed["id"];
+        //            }
+        //        }
+        //        if (string.IsNullOrEmpty(documentId))
+        //        {
+        //            var qs = webFileInfo.ResponseUri.Query; //"userID=16555&gameID=60&score=4542.122&time=343114";
+        //            var parsed = HttpUtility.ParseQueryString(qs);
+        //            documentId = parsed["id"];
+        //        }
+        //        string newUrl = string.Format("https://drive.google.com/uc?export=download&id={0}", documentId);
+        //        var content = await GetWebContent(newUrl);
+        //        string confirmToken = "";
+        //        int intTokenStart = content.LastIndexOf("confirm=t&amp;uuid=");
+        //        int intTokenEnd = content.IndexOf("\" method=\"post\"");
+        //        if (intTokenStart != -1 && intTokenEnd != -1)
+        //        {
+        //            confirmToken = content.Substring(intTokenStart, intTokenEnd - intTokenStart).Replace("confirm=t&amp;uuid=", "");
+        //        }
+        //        returnUrl = string.Format("https://drive.google.com/uc?export=download&id={0}&confirm=t&uuid={1}", documentId, confirmToken);
+        //    }
+        //    return returnUrl;
+        //}
+        //public static bool IsGoogleUrl(Uri uri)
+        //{
+        //    return uri.Host == "drive.google.com";
+        //}
+
+        ///// <summary>
+        ///// Get the web content
+        ///// </summary>
+        ///// <param name="url"></param>
+        ///// <returns></returns>
+        //static async Task<string> GetWebContent(string url)
+        //{
+        //    using (HttpClient client = new HttpClient())
+        //    {
+        //        return await client.GetStringAsync(url);
+        //    }
+        //}
 
         /// <summary>
         /// Delete a mod
@@ -793,227 +800,165 @@ namespace eoj12.DCS.Toolkit.Services
         /// < returns ></ returns >
         public async Task<WebFileInfo> DownloadFileAsync(string url)
         {
-            WebFileInfo modInfo = null;
+
+            var downloadService = new DownloadService(LocalDb);
+            return await downloadService.DownloadFileAsync(url);
+            //WebFileInfo modInfo = null;
 
 
-            Uri uri = new Uri(url);
-            if (IsGoogleUrl(uri) && LocalDb.Settings.UseGoogleApi)
-            {
-                modInfo =await GoogleService.DownloadFileFromGoogleDrive(url);
-            }
-            else
-            {
-                modInfo = await GetWebFileInfoAndFixGoogleUrl(url);
-                HttpClient client = new HttpClient();
-                client.Timeout = new TimeSpan(1, 0, 0);
-                var response = await client.GetAsync(modInfo.ResponseUri);
-                response.EnsureSuccessStatusCode();
-                modInfo.Stream = (MemoryStream)await response.Content.ReadAsStreamAsync();
-            }
-            return modInfo;
-
+            //Uri uri = new Uri(url);
+            //if (IsGoogleUrl(uri) && LocalDb.Settings.UseGoogleApi)
+            //{
+            //    var googleService = new GoogleService();
+            //    modInfo =await googleService.DownloadFileFromGoogleDrive(url);
+            //}
+            //else
+            //{
+            //    modInfo = await GetWebFileInfoAndFixGoogleUrl(url);
+            //    HttpClient client = new HttpClient();
+            //    client.Timeout = new TimeSpan(1, 0, 0);
+            //    var response = await client.GetAsync(modInfo.ResponseUri);
+            //    response.EnsureSuccessStatusCode();
+            //    modInfo.Stream = (MemoryStream)await response.Content.ReadAsStreamAsync();
+            //}
+            //return modInfo;
         }
-        //public async Task<WebFileInfo> DownloadFileAsync(string url)
-        //{
-        //    //WebFileInfo modInfo = new WebFileInfo("455.json", "json", 111, DateTime.Now, "json", new Uri(url));
-        //    //if(IsGoogleUrl(new Uri(url)))  
-        //    //{
-        //    //    url= FixGoogleUrl()
-        //    //}
-        //    WebFileInfo modInfo = DownloadFileFromGoogleDrive("1lg-qsRFR1VjOABReYgFUVTH6q_DzM5fk");
-        //    //modInfo.Stream = stream;
-        //    //const int BUFFER_SIZE = 16 * 1024;
-        //    //string filePath = ModManagerTempPath + @"\TempFile";
-        //    //using (var outputFileStream = File.Create(filePath, BUFFER_SIZE))
-        //    //{
-        //    //    var req = WebRequest.Create(url);
-        //    //    using (var response = req.GetResponse())
-        //    //    {
-        //    //        modInfo= await GetWebFileInfo(response);
-        //    //        using (var responseStream = response.GetResponseStream())
-        //    //        {
-        //    //            var buffer = new byte[BUFFER_SIZE];
-        //    //            int bytesRead;
-        //    //            do
-        //    //            {
-        //    //                bytesRead = responseStream.Read(buffer, 0, BUFFER_SIZE);
-        //    //                outputFileStream.Write(buffer, 0, bytesRead);
-        //    //            } while (bytesRead > 0);
-        //    //            modInfo.Stream = responseStream;
-        //    //        }
-
-        //    //        modInfo.FilePath = url;
-        //    //    }
-        //    //}
-        //    return modInfo;
-        //}
 
         ///// <summary>
-        ///// Download a file from a url
+        ///// Extract a zip file from a stream
         ///// </summary>
-        ///// <param name="url"></param>
+        ///// <param name="webFileInfo"></param>
+        ///// <param name="saveGamePath"></param>
+        ///// <param name="targetFolder"></param>
         ///// <returns></returns>
-        //public async Task<WebFileInfo> DownloadFileAsync(string url)
+        ///// <exception cref="Exception"></exception>
+        //public List<ModEntry> ExtractFileFromStream(WebFileInfo webFileInfo, string saveGamePath, string targetFolder)
         //{
-        //    Uri uri = new Uri(url);
-        //    WebFileInfo modInfo = null;
-        //    if (IsGoogleUrl(uri)) {
-
-        //        modInfo = await GetWebFileInfo(url);
-        //        var fileId = HttpUtility.ParseQueryString(uri.Query.ToLower()).Get("id");
-        //        modInfo.Stream = DownloadFileFromGoogleDrive("fileId");
+        //    List<ModEntry> entries = null;
+        //    if (webFileInfo.FileExtension == ".zip")
+        //    {
+        //        entries = ExtractZipFromStream(webFileInfo.Stream, saveGamePath, targetFolder);
+        //    }
+        //    else if (webFileInfo.FileExtension == ".rar")
+        //    { //(RarArchive.IsRarFile(stream)){
+        //        Guid guid = Guid.NewGuid();
+        //        var fileStream = ConvertMemoryStreamToFileStream((MemoryStream)webFileInfo.Stream, @$"{ModManagerTempPath}\{guid}");
+        //        entries = ExtractRarFromFileInfo(new FileInfo(@$"{ModManagerTempPath}\{guid}"), saveGamePath, targetFolder);
         //    }
         //    else
         //    {
-        //        modInfo = await GetWebFileInfoAndFixGoogleUrl(url);// GetWebFileInfo(url);//
-        //        HttpClient client = new HttpClient();
-        //        client.Timeout = new TimeSpan(1, 0, 0);
-        //        var response = await client.GetAsync(modInfo.ResponseUri);//,HttpCompletionOption.ResponseHeadersRead);                    
-        //        response.EnsureSuccessStatusCode();
-        //        modInfo.Stream = await response.Content.ReadAsStreamAsync();
+        //        throw new Exception("File format not supported");
         //    }
-        //    return modInfo;
+        //    return entries;
 
         //}
 
+        ///// <summary>
+        ///// Extract a zip file from a stream
+        ///// </summary>
+        ///// <param name="stream"></param>
+        ///// <param name="outputPath"></param>
+        ///// <param name="targetFolder"></param>
+        ///// <returns></returns>
+        //public static List<ModEntry> ExtractZipFromStream(Stream stream, string outputPath, string targetFolder)
+        //{
+        //    using (ZipArchive archive = new ZipArchive(stream, ZipArchiveMode.Read))
+        //    {
+        //        List<ModEntry> entries = new List<ModEntry>();
+        //        foreach (ZipArchiveEntry entry in archive.Entries)
+        //        {
+        //            if (!entry.Name.ToLower().Contains("desktop.ini") && !entry.Name.ToLower().Contains("thumbs.db"))
+        //            {
+        //                ModEntry modEntry = new ModEntry()
+        //                {
+        //                    Name = entry.Name,
+        //                    IsDirectory = string.IsNullOrEmpty(entry.Name) ? true : false,
+        //                    CompressedLength = entry.CompressedLength,
+        //                    //Path = $@"{outputPath}\{entry.FullName}",
+        //                    Path = TrimPath(outputPath, targetFolder, entry.FullName),
+        //                    LastWriteTime = entry.LastWriteTime,
+        //                    Length = entry.Length
+        //                };
+        //                entries.Add(modEntry);
+        //                //string entryOutputPath = Path.Combine(outputPath, entry.FullName);
+        //                string entryOutputPath = modEntry.Path;
+        //                if (string.IsNullOrEmpty(entry.Name))
+        //                {
+        //                    // This is a directory, create it if it doesn't exist
+        //                    Directory.CreateDirectory(entryOutputPath);
+        //                }
+        //                else
+        //                {
+        //                    string fileName = Path.GetFileName(modEntry.Path);
+        //                    string folder = Path.GetFullPath(modEntry.Path).Replace(fileName, "");
+        //                    EnsureDirectory(folder);
+        //                    // This is a file, extract it to disk
+        //                    using (Stream entryStream = entry.Open())
+        //                    {
+        //                        using (FileStream output = new FileStream(entryOutputPath, FileMode.Create))
+        //                        {
 
+        //                            entryStream.CopyTo(output);
 
+        //                        }
+        //                    }
+        //                }
+        //            }
+        //        }
+        //        return entries;
+        //    }
+        //}
 
-        /// <summary>
-        /// Extract a zip file from a stream
-        /// </summary>
-        /// <param name="webFileInfo"></param>
-        /// <param name="saveGamePath"></param>
-        /// <param name="targetFolder"></param>
-        /// <returns></returns>
-        /// <exception cref="Exception"></exception>
-        public List<ModEntry> ExtractFileFromStream(WebFileInfo webFileInfo, string saveGamePath, string targetFolder)
-        {
-            List<ModEntry> entries = null;
-            if (webFileInfo.FileExtension == ".zip")
-            {
-                entries = ExtractZipFromStream(webFileInfo.Stream, saveGamePath, targetFolder);
-            }
-            else if (webFileInfo.FileExtension == ".rar")
-            { //(RarArchive.IsRarFile(stream)){
-                Guid guid = Guid.NewGuid();
-                var fileStream = ConvertMemoryStreamToFileStream((MemoryStream)webFileInfo.Stream, @$"{ModManagerTempPath}\{guid}");
-                entries = ExtractRarFromFileInfo(new FileInfo(@$"{ModManagerTempPath}\{guid}"), saveGamePath, targetFolder);
-            }
-            else
-            {
-                throw new Exception("File format not supported");
-            }
-            return entries;
+        ///// <summary>
+        ///// Extract a rar file from a fileinfo
+        ///// </summary>
+        ///// <param name="fileInfo"></param>
+        ///// <param name="outputPath"></param>
+        ///// <param name="targetFolder"></param>
+        ///// <returns></returns>
+        //public static List<ModEntry> ExtractRarFromFileInfo(FileInfo fileInfo, string outputPath, string targetFolder)
+        //{
 
-        }
+        //    EnsureDirectory(outputPath);
+        //    var modFolder = outputPath.ToLower().Split("\\").LastOrDefault();
+        //    List<ModEntry> entries = new List<ModEntry>();
+        //    using (var archive = RarArchive.Open(fileInfo))
+        //    {
+        //        foreach (var entry in archive.Entries)
+        //        {
+        //            if (!entry.Key.ToLower().Contains("desktop.ini")&& !entry.Key.ToLower().Contains("thumbs.db") )
+        //            {
+        //                ModEntry modEntry = new ModEntry()
+        //                {
+        //                    Name = entry.IsDirectory ? "" : Path.GetFileName(entry.Key),
+        //                    IsDirectory = entry.IsDirectory,
+        //                    CompressedLength = entry.CompressedSize,
+        //                    Path = TrimPath(outputPath, targetFolder, entry.Key),
+        //                    //LastWriteTime = entry.LastModifiedTime,
+        //                    Length = entry.Size
+        //                };
+        //                entries.Add(modEntry);
 
-        /// <summary>
-        /// Extract a zip file from a stream
-        /// </summary>
-        /// <param name="stream"></param>
-        /// <param name="outputPath"></param>
-        /// <param name="targetFolder"></param>
-        /// <returns></returns>
-        public static List<ModEntry> ExtractZipFromStream(Stream stream, string outputPath, string targetFolder)
-        {
-            using (ZipArchive archive = new ZipArchive(stream, ZipArchiveMode.Read))
-            {
-                List<ModEntry> entries = new List<ModEntry>();
-                foreach (ZipArchiveEntry entry in archive.Entries)
-                {
-                    if (!entry.Name.ToLower().Contains("desktop.ini") && !entry.Name.ToLower().Contains("thumbs.db"))
-                    {
-                        ModEntry modEntry = new ModEntry()
-                        {
-                            Name = entry.Name,
-                            IsDirectory = string.IsNullOrEmpty(entry.Name) ? true : false,
-                            CompressedLength = entry.CompressedLength,
-                            //Path = $@"{outputPath}\{entry.FullName}",
-                            Path = TrimPath(outputPath, targetFolder, entry.FullName),
-                            LastWriteTime = entry.LastWriteTime,
-                            Length = entry.Length
-                        };
-                        entries.Add(modEntry);
-                        //string entryOutputPath = Path.Combine(outputPath, entry.FullName);
-                        string entryOutputPath = modEntry.Path;
-                        if (string.IsNullOrEmpty(entry.Name))
-                        {
-                            // This is a directory, create it if it doesn't exist
-                            Directory.CreateDirectory(entryOutputPath);
-                        }
-                        else
-                        {
-                            string fileName = Path.GetFileName(modEntry.Path);
-                            string folder = Path.GetFullPath(modEntry.Path).Replace(fileName, "");
-                            EnsureDirectory(folder);
-                            // This is a file, extract it to disk
-                            using (Stream entryStream = entry.Open())
-                            {
-                                using (FileStream output = new FileStream(entryOutputPath, FileMode.Create))
-                                {
+        //                if (!entry.IsDirectory)
+        //                {
+        //                    string fileName = Path.GetFileName(modEntry.Path);
+        //                    string folder = Path.GetFullPath(modEntry.Path).Replace(fileName, "");
 
-                                    entryStream.CopyTo(output);
-                                    
-                                }
-                            }
-                        }
-                    }
-                }
-                return entries;
-            }
-        }
+        //                    EnsureDirectory(folder);
 
-        /// <summary>
-        /// Extract a rar file from a fileinfo
-        /// </summary>
-        /// <param name="fileInfo"></param>
-        /// <param name="outputPath"></param>
-        /// <param name="targetFolder"></param>
-        /// <returns></returns>
-        public static List<ModEntry> ExtractRarFromFileInfo(FileInfo fileInfo, string outputPath, string targetFolder)
-        {
+        //                    entry.WriteToFile(modEntry.Path, new ExtractionOptions
+        //                    {
+        //                        ExtractFullPath = true,
+        //                        Overwrite = true,
 
-            EnsureDirectory(outputPath);
-            var modFolder = outputPath.ToLower().Split("\\").LastOrDefault();
-            List<ModEntry> entries = new List<ModEntry>();
-            using (var archive = RarArchive.Open(fileInfo))
-            {
-                foreach (var entry in archive.Entries)
-                {
-                    if (!entry.Key.ToLower().Contains("desktop.ini")&& !entry.Key.ToLower().Contains("thumbs.db") )
-                    {
-                        ModEntry modEntry = new ModEntry()
-                        {
-                            Name = entry.IsDirectory ? "" : Path.GetFileName(entry.Key),
-                            IsDirectory = entry.IsDirectory,
-                            CompressedLength = entry.CompressedSize,
-                            Path = TrimPath(outputPath, targetFolder, entry.Key),
-                            //LastWriteTime = entry.LastModifiedTime,
-                            Length = entry.Size
-                        };
-                        entries.Add(modEntry);
-
-                        if (!entry.IsDirectory)
-                        {
-                            string fileName = Path.GetFileName(modEntry.Path);
-                            string folder = Path.GetFullPath(modEntry.Path).Replace(fileName, "");
-
-                            EnsureDirectory(folder);
-
-                            entry.WriteToFile(modEntry.Path, new ExtractionOptions
-                            {
-                                ExtractFullPath = true,
-                                Overwrite = true,
-
-                            });
-                        }
-                    }
-                }
-            }
-            fileInfo.Delete();
-            return entries;
-        }
+        //                    });
+        //                }
+        //            }
+        //        }
+        //    }
+        //    fileInfo.Delete();
+        //    return entries;
+        //}
 
         /// <summary>
         /// Trim path to remove duplicate folder
@@ -1025,53 +970,41 @@ namespace eoj12.DCS.Toolkit.Services
         //C:\Users\xx\Saved Games\DCS.openbetaModManager2\Liveries\  \Liveries\T-45\CT-155201
         //C:\Users\xx\Saved Games\DCS.openbetaModManager3\           \425 Warthog Liveries Pack_02\Liveries\A-10CII\RCAF_425_LowVis_DarkGreenCamo
         //C:\Users\xx\Saved Games\DCS.openbetaModManager3\           \425 Warthog Liveries Pack_02\Mods\aircraft\A-10CII\RCAF_425_LowVis_DarkGreenCamo
-        private static string TrimPath(string outputPath, string targetFolder, string modEntryPath)
-        {
+        //private static string TrimPath(string outputPath, string targetFolder, string modEntryPath)
+        //{
 
 
-            var modEntryPathFix = modEntryPath.Replace("/", "\\");
-            if (modEntryPathFix.IndexOf("\\") != 0)
-                modEntryPathFix = modEntryPathFix.Insert(0, "\\");
-            var retVal = $@"{outputPath}{targetFolder}\{modEntryPathFix}";
+        //    var modEntryPathFix = modEntryPath.Replace("/", "\\");
+        //    if (modEntryPathFix.IndexOf("\\") != 0)
+        //        modEntryPathFix = modEntryPathFix.Insert(0, "\\");
+        //    var retVal = $@"{outputPath}{targetFolder}\{modEntryPathFix}";
 
-            if (targetFolder != Folders.ROOT)
-            {
-                var targetFolderIndex = modEntryPathFix.ToLower().IndexOf(targetFolder);
-                var modFolderIndex = modEntryPathFix.ToLower().IndexOf(Folders.MODS);
-                if (targetFolderIndex >= 0)
-                    retVal = outputPath + targetFolder + modEntryPathFix.Substring(targetFolderIndex + targetFolder.Length);
-                else if (modFolderIndex >= 0)
-                    retVal = outputPath + targetFolder + modEntryPathFix.Substring(modFolderIndex + Folders.MODS.Length);
-            }
+        //    if (targetFolder != Folders.ROOT)
+        //    {
+        //        var targetFolderIndex = modEntryPathFix.ToLower().IndexOf(targetFolder);
+        //        var modFolderIndex = modEntryPathFix.ToLower().IndexOf(Folders.MODS);
+        //        if (targetFolderIndex >= 0)
+        //            retVal = outputPath + targetFolder + modEntryPathFix.Substring(targetFolderIndex + targetFolder.Length);
+        //        else if (modFolderIndex >= 0)
+        //            retVal = outputPath + targetFolder + modEntryPathFix.Substring(modFolderIndex + Folders.MODS.Length);
+        //    }
 
-            return retVal;
+        //    return retVal;
 
-        }
+        //}
 
 
-        public FileStream ConvertMemoryStreamToFileStream(MemoryStream memoryStream, string outputFilePath)
-        {
-            // Create a new file stream and copy the contents of the memory stream to it.
-            using (var fileStream = new FileStream(outputFilePath, FileMode.Create))
-            {
-                memoryStream.Seek(0, SeekOrigin.Begin);
-                memoryStream.CopyTo(fileStream);
-                return fileStream;
-            }
-        }
-        private static bool IsValidZipFile(Stream stream)
-        {
-            if (!stream.CanSeek)
-            {
-                return false;
-            }
+        //public FileStream ConvertMemoryStreamToFileStream(MemoryStream memoryStream, string outputFilePath)
+        //{
+        //    // Create a new file stream and copy the contents of the memory stream to it.
+        //    using (var fileStream = new FileStream(outputFilePath, FileMode.Create))
+        //    {
+        //        memoryStream.Seek(0, SeekOrigin.Begin);
+        //        memoryStream.CopyTo(fileStream);
+        //        return fileStream;
+        //    }
+        //}
 
-            byte[] buffer = new byte[4];
-            stream.Read(buffer, 0, buffer.Length);
-
-            bool retVal = BitConverter.ToUInt32(buffer, 0) == 0x04034b50;
-            return retVal;
-        }
 
         public void SaveLocalDb()
         {

@@ -4,6 +4,7 @@ using Google.Apis.Auth.OAuth2.Flows;
 using Google.Apis.Auth.OAuth2.Responses;
 using Google.Apis.Download;
 using Google.Apis.Drive.v3;
+using Google.Apis.Drive.v3.Data;
 using Google.Apis.Services;
 using Google.Apis.Util.Store;
 using Microsoft.Extensions.Configuration;
@@ -18,10 +19,13 @@ using static System.Formats.Asn1.AsnWriter;
 
 namespace eoj12.DCS.Toolkit.Services
 {
-    public static class GoogleService
+    public class GoogleService
     {
-
-
+        public DriveService DriveService { get; set; }
+        public GoogleService()
+        {
+            DriveService = GetGoogleDriveService();
+        }
         private static UserCredential Login()
         {
             var appSettings = AppConfigService.GetAppSettings();
@@ -30,14 +34,33 @@ namespace eoj12.DCS.Toolkit.Services
                 ClientId = appSettings.ClientId,
                 ClientSecret = appSettings.ClientSecret
             };
-            var service = GoogleWebAuthorizationBroker.AuthorizeAsync(secrets, new[] { "https://www.googleapis.com/auth/drive.readonly" }, "user", CancellationToken.None).Result;
-            return service;
+            var credential = GoogleWebAuthorizationBroker.AuthorizeAsync(secrets, new[] { "https://www.googleapis.com/auth/drive.file" }, "user", CancellationToken.None).Result;
+            return credential;
         }
-      
-
-        private static DriveService GetGoogleDriveService()
+        private static GoogleCredential LoginFromFile()
         {
-            UserCredential credential = Login();
+            string PathToServiceAccountKeyFile = string.Format($@"{ FileSystem.Current.AppDataDirectory}\service_account.json");
+            // Load the Service account credentials and define the scope of its access.
+            var credential = GoogleCredential.FromFile(PathToServiceAccountKeyFile)
+                            .CreateScoped(DriveService.ScopeConstants.Drive);
+
+            return credential;
+        }
+
+        private static GoogleCredential LoginFromJson()
+        {
+            string filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "service_account.json");
+            string json = System.IO.File.ReadAllText(filePath);
+            // Load the Service account credentials and define the scope of its access.
+             var credential = GoogleCredential.FromJson(json)
+                            .CreateScoped(DriveService.ScopeConstants.Drive);
+
+            return credential;
+        }
+
+        public DriveService GetGoogleDriveService()
+        {
+            var credential = LoginFromJson();
             var driveService = new DriveService(new BaseClientService.Initializer() { HttpClientInitializer = credential });
             return driveService;
         }
@@ -48,19 +71,15 @@ namespace eoj12.DCS.Toolkit.Services
         /// </summary>
         /// <param name = "fileId" > file ID of any workspace document format file.</param>
         /// <returns>byte array stream if successful, null otherwise.</returns>
-        public static async Task<WebFileInfo> DownloadFileFromGoogleDrive(string url)
+        public async Task<WebFileInfo> DownloadFileFromGoogleDrive(string url)
         {
             try
             {
-
                 WebFileInfo webFileInfo = null;
                 var uri = new Uri(FormatGoogleUrl(url));
                 var fileId = HttpUtility.ParseQueryString(uri.Query).Get("id");
-                var service = GetGoogleDriveService();
-                //var service = GetDriveService();
-                var request = service.Files.Get(fileId);
+                var request = DriveService.Files.Get(fileId);
                 var stream = new MemoryStream();
-
 
                 // Add a handler which will be notified on progress changes.
                 // It will notify on each chunk download and when the
@@ -92,7 +111,7 @@ namespace eoj12.DCS.Toolkit.Services
 
                 if (file != null)
                 {
-                    webFileInfo = new WebFileInfo(file.Name, Path.GetExtension(file.Name), 111, DateTime.Now, file.MimeType, new Uri(url));
+                    webFileInfo = new WebFileInfo(file.Name, Path.GetExtension(file.Name), stream.Length, DateTime.Now, file.MimeType, new Uri(url));
                     await request.DownloadAsync(stream);
                     webFileInfo.Stream = stream;
                 }
@@ -104,7 +123,6 @@ namespace eoj12.DCS.Toolkit.Services
             }
             catch (Exception e)
             {
-                // TODO(developer) - handle error appropriately
                 if (e is AggregateException)
                 {
                     Console.WriteLine("Credential Not found");
@@ -145,6 +163,10 @@ namespace eoj12.DCS.Toolkit.Services
             }
             string retUrl = string.Format("https://drive.google.com/uc?export=download&id={0}", documentId);
             return retUrl;
+        }
+        public static bool IsGoogleUrl(Uri uri)
+        {
+            return uri.Host == "drive.google.com";
         }
     }
 }

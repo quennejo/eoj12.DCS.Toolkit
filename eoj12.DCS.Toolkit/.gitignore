@@ -1,3 +1,4 @@
 ﻿# .gitignore
 appsettings.json
 appsettings.local.json
+service_account.json

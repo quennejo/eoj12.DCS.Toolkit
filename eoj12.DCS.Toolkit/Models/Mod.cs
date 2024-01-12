@@ -93,13 +93,13 @@ namespace eoj12.DCS.Toolkit.Models
         //    }
         //}
 
-        public Mod CopyTo(Mod mod, bool includeEntries = true,bool includeStatusProperties=true)
+        public Mod CopyTo(Mod mod, bool includeEntries = true,bool includeStatusProperties=true,bool includePotentialMatch=true)
         {
-            Mod modCopy = GetModCopy(mod, includeEntries, includeStatusProperties);
+            Mod modCopy = GetModCopy(mod, includeEntries, includeStatusProperties, includePotentialMatch);
             return modCopy;
         }
 
-        private static Mod GetModCopy(Mod mod, bool includeEntries, bool includeStatusProperties)
+        private static Mod GetModCopy(Mod mod, bool includeEntries, bool includeStatusProperties, bool includePotentialMatch)
         {
             var retVal = new Mod()
             {
@@ -113,14 +113,18 @@ namespace eoj12.DCS.Toolkit.Models
                 Version = mod.Version,
                 Folder = mod.Folder,
                 IsModDefinition = mod.IsModDefinition,
-                IsPotentialMatch = mod.IsPotentialMatch,
-                PotentialMatch = mod.IsPotentialMatch ? GetModCopy(mod.PotentialMatch, false, false) : null,
+
             };
             if (includeStatusProperties)
             {
                 retVal.IsDisable = mod.IsDisable;
                 retVal.IsDownloaded = mod.IsDownloaded;
                 retVal.IsPreviousVersion = mod.IsPreviousVersion;
+            }
+            if (includePotentialMatch)
+            {
+                retVal.IsPotentialMatch = mod.IsPotentialMatch;
+                retVal.PotentialMatch = mod.IsPotentialMatch ? GetModCopy(mod.PotentialMatch, false, false, true) : null;
             }
             return retVal;
         }

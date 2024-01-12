@@ -94,6 +94,11 @@
                 <RadzenImage Src="/spacer.png" style="width: 50px;" />
                 <RadzenButton ButtonStyle="ButtonStyle.Primary" Icon="auto_fix_normal" class="mt-2 mb-4" Text="Match All" Click="@MatchAll" />
             }
+            @if (DefinitionMode && Mods.Any(mod => mod.IsDownloaded ==false & mod.IsPreviousVersion == false))
+            {
+                <RadzenImage Src="/spacer.png" style="width: 50px;" />
+                <RadzenButton ButtonStyle="ButtonStyle.Primary" Icon="done" class="mt-2 mb-4" Text="Download Missing Mods" Click="@DownloadAll" />
+             }
             </div>
         </div>
     </div>
@@ -650,6 +655,65 @@
     /// </summary>
     /// <param name="modDefinition"></param>
     /// <returns></returns>
+    private async Task DownloadAll()
+    {
+        try
+        {
+            var modToDowload = Mods.Where(mod => mod.IsDownloaded ==false & mod.IsPreviousVersion == false).ToList();
+            var result = await DialogService.OpenAsync("Confirm match", ds =>
+            @<RadzenStack Gap="1.5rem">
+                <p>Download the followings mods?</p>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Description</th>
+                            <th>TargetFolder</th>
+                            <th>Version</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                @foreach (var mod in modToDowload)
+                    {
+                    if(mod.IsPotentialMatch){
+                        <tr>
+                            <td>@mod.Title</td>
+                            <td>@mod.Description</td>
+                            <td>@mod.TargetFolder</td>
+                            <td>@mod.Version</td>
+                        </tr>
+                    }
+                    }
+                    </tbody>
+                </table>
+
+                <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+                    <RadzenStack Orientation="Orientation.Horizontal">
+                        <RadzenButton Text="Confirm" Click="() => ds.Close(true)" />
+                        <RadzenButton Text="Cancel" Click="() => ds.Close(false)" ButtonStyle="ButtonStyle.Light" />
+                    </RadzenStack>
+                </RadzenStack>
+            </RadzenStack>
+            );
+            if (result != null && result == true)
+            {
+                modToDowload.ForEach(async m => await DownloadMod(m));
+            }
+
+        }
+        catch (Exception ex)
+        {
+            CloseBusyDialog();
+            await ShowErrorMessages("Download stop. Please retry later");
+
+        }
+    }
+
+    /// <summary>
+    /// download mod 
+    /// </summary>
+    /// <param name="modDefinition"></param>
+    /// <returns></returns>
     private async Task DownloadMod(Mod modDefinition)
     {
         try
@@ -666,7 +730,7 @@
                 await ShowErrorMessages("Your limit has been exceeded on Google drive. Please try later..");
             else
                 await ShowErrorMessages(ex.ToString());
-
+            throw;
         }
     }
     /// <summary>
@@ -728,9 +792,6 @@
                 </tr>
                 }
             }
-    
-         
-
             </tbody>
         </table>
 
