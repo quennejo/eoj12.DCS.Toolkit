@@ -8,6 +8,8 @@ using System.IO.Compression;
 using SharpCompress.Archives.Rar;
 using SharpCompress.Common;
 using SharpCompress.Archives;
+using eoj12.DCS.Toolkit.Utilites;
+using Radzen;
 namespace eoj12.DCS.Toolkit.Services
 {
     public static class ArchiveService
@@ -23,15 +25,17 @@ namespace eoj12.DCS.Toolkit.Services
         public static List<ModEntry> ExtractFileFromStream(WebFileInfo webFileInfo, string saveGamePath, string targetFolder,string modManagerTempPath)
         {
             List<ModEntry> entries = null;
+            var tempFilePath= @$"{modManagerTempPath}\{Guid.NewGuid()}_{webFileInfo.FileName}";
             if (webFileInfo.FileExtension == ".zip")
             {
+                //StreamHelper.ConvertMemoryStreamToFileStream(webFileInfo.Stream,tempFilePath);
                 entries = ExtractZipFromStream(webFileInfo.Stream, saveGamePath, targetFolder);
             }
             else if (webFileInfo.FileExtension == ".rar")
             { //(RarArchive.IsRarFile(stream)){
-                Guid guid = Guid.NewGuid();
-                var fileStream = ConvertMemoryStreamToFileStream((MemoryStream)webFileInfo.Stream, @$"{modManagerTempPath}\{guid}");
-                entries = ExtractRarFromFileInfo(new FileInfo(@$"{modManagerTempPath}\{guid}"), saveGamePath, targetFolder);
+
+                StreamHelper.ConvertMemoryFile(webFileInfo.Stream, tempFilePath);
+                entries = ExtractRarFromFileInfo(new System.IO.FileInfo(tempFilePath), saveGamePath, targetFolder);
             }
             else
             {
@@ -48,6 +52,9 @@ namespace eoj12.DCS.Toolkit.Services
         /// <param name="outputPath"></param>
         /// <param name="targetFolder"></param>
         /// <returns></returns>
+        //public static List<ModEntry> ExtractZipFromStream(string archiveFilePath, string outputPath, string targetFolder)
+        //{
+        //    using (ZipArchive archive = ZipFile.Open(archiveFilePath, ZipArchiveMode.Read))
         public static List<ModEntry> ExtractZipFromStream(Stream stream, string outputPath, string targetFolder)
         {
             using (ZipArchive archive = new ZipArchive(stream, ZipArchiveMode.Read))
@@ -93,6 +100,8 @@ namespace eoj12.DCS.Toolkit.Services
                         }
                     }
                 }
+                //var fileInfo = new System.IO.FileInfo(archiveFilePath);
+                //fileInfo.Delete();
                 return entries;
             }
         }
@@ -104,7 +113,7 @@ namespace eoj12.DCS.Toolkit.Services
         /// <param name="outputPath"></param>
         /// <param name="targetFolder"></param>
         /// <returns></returns>
-        public static List<ModEntry> ExtractRarFromFileInfo(FileInfo fileInfo, string outputPath, string targetFolder)
+        public static List<ModEntry> ExtractRarFromFileInfo(System.IO.FileInfo fileInfo, string outputPath, string targetFolder)
         {
 
             EnsureDirectory(outputPath);
@@ -147,16 +156,7 @@ namespace eoj12.DCS.Toolkit.Services
             fileInfo.Delete();
             return entries;
         }
-        public static FileStream ConvertMemoryStreamToFileStream(MemoryStream memoryStream, string outputFilePath)
-        {
-            // Create a new file stream and copy the contents of the memory stream to it.
-            using (var fileStream = new FileStream(outputFilePath, FileMode.Create))
-            {
-                memoryStream.Seek(0, SeekOrigin.Begin);
-                memoryStream.CopyTo(fileStream);
-                return fileStream;
-            }
-        }
+       
         /// <summary>
         /// ensure directory exists, if not create it
         /// </summary>

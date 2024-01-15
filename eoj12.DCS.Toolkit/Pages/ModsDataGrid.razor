@@ -90,15 +90,15 @@
                 <RadzenButton ButtonStyle="ButtonStyle.Success" Icon="toggle_on" class="mt-2 mb-4" Text="Enable Mods" Click="@EnableAll" />
                 <RadzenButton ButtonStyle="ButtonStyle.Success" Icon="toggle_off" class="mt-2 mb-4" Text="Disable Mods" Click="@DisableAll" Shade="Shade.Lighter" />
             }
-            @if (DefinitionMode && Mods.Any(m => m.IsPotentialMatch)){
+            @if (DefinitionMode && Mods.Any(m =>m!= null && m.IsPotentialMatch)){
                 <RadzenImage Src="/spacer.png" style="width: 50px;" />
                 <RadzenButton ButtonStyle="ButtonStyle.Primary" Icon="auto_fix_normal" class="mt-2 mb-4" Text="Match All" Click="@MatchAll" />
             }
-            @if (DefinitionMode && Mods.Any(mod => mod.IsDownloaded ==false & mod.IsPreviousVersion == false))
+           @*  @if (DefinitionMode && Mods.Any(mod =>mod != null && mod.IsDownloaded ==false && mod.IsPreviousVersion == false))
             {
                 <RadzenImage Src="/spacer.png" style="width: 50px;" />
-                <RadzenButton ButtonStyle="ButtonStyle.Primary" Icon="done" class="mt-2 mb-4" Text="Download Missing Mods" Click="@DownloadAll" />
-             }
+                <RadzenButton ButtonStyle="ButtonStyle.Primary" Icon="done" class="mt-2 mb-4" Text="Download All" Click="@DownloadAll" @onclick:stopPropagation="true" MouseEnter="@(args => ShowTooltip(args, new TooltipOptions(){ Text = "Downlaod missing mods",Position=TooltipPosition.Left}))" />
+             } *@
             </div>
         </div>
     </div>
@@ -198,7 +198,7 @@
             <Template Context="mod">
                     @if (mod.IsDownloaded & mod.IsPreviousVersion == false)
                     {
-                        <RadzenButton Icon="done" ButtonStyle="ButtonStyle.Success" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => DownloadMod(mod))" @onclick:stopPropagation="true" MouseEnter="@(args => ShowTooltip(args, new TooltipOptions(){ Text = "Downlaod Mod",Position=TooltipPosition.Top}))" />
+                        <RadzenButton Icon="done" ButtonStyle="ButtonStyle.Success" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => UpdateMod(mod))" @onclick:stopPropagation="true" MouseEnter="@(args => ShowTooltip(args, new TooltipOptions(){ Text = "Repair Mod",Position=TooltipPosition.Left}))" />
                     }
                     else if (mod.IsDownloading)
                     {
@@ -206,11 +206,11 @@
                     }
                     else if (mod.IsPreviousVersion)
                     {
-                        <RadzenButton Icon="update" ButtonStyle="ButtonStyle.Info" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => UpdateMod(mod))" @onclick:stopPropagation="true" MouseEnter="@(args => ShowTooltip(args, new TooltipOptions(){ Text = "Update Mod to latest version",Position=TooltipPosition.Top}))" />
+                        <RadzenButton Icon="update" ButtonStyle="ButtonStyle.Info" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => UpdateMod(mod))" @onclick:stopPropagation="true" MouseEnter="@(args => ShowTooltip(args, new TooltipOptions(){ Text = "Update Mod to latest version",Position=TooltipPosition.Left}))" />
                     }
                     else
                     {
-                        <RadzenButton Icon="download" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => DownloadMod(mod))" @onclick:stopPropagation="true" MouseEnter="@(args => ShowTooltip(args, new TooltipOptions(){ Text = "Downlaod Mod",Position=TooltipPosition.Top}))" />
+                        <RadzenButton Icon="download" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => DownloadMod(mod))" @onclick:stopPropagation="true" MouseEnter="@(args => ShowTooltip(args, new TooltipOptions(){ Text = "Downlaod Mod",Position=TooltipPosition.Left}))" />
                     }                        
             </Template>
         </RadzenDataGridColumn>
@@ -291,7 +291,7 @@
     private bool filterPlane = false;
     private bool filterLiveries = false;
     private bool filterTech = false;
-
+    private bool onErrorFlag = false;
     public bool IsNew {
         get
         {
@@ -389,7 +389,7 @@
                     filterTech = true;
                     filterLiveries = false;
                     filterPlane = false;
-                    
+
 
                 }
                 _modsGrid.Reload();
@@ -502,7 +502,7 @@
                     {
 
                         //if(e.File.e)
-                         _file =result;
+                        _file =result;
                         var fileExtension = Path.GetExtension(result.FileName);
                         if (string.IsNullOrEmpty(fileExtension) || (fileExtension.ToLower() != ".rar" && fileExtension.ToLower() != ".zip"))
                             throw new Exception("File type not supported");
@@ -535,17 +535,21 @@
     /// </summary>
     /// <param name="mod"></param>
     /// <returns></returns>
-    async Task SaveRow(Mod mod)
+    private async Task SaveRow(Mod mod)
     {
         try
         {
+            ShowBusyDialog($"Downloading", $"{mod.Title}", $"Target Folder : {mod.TargetFolder}", $"Size : {mod.Size}", $"Version : {mod.Version}");
             await _modsGrid.UpdateRow(mod);
+            CloseBusyDialog();
         }
         catch (Exception ex)
         {
+            CloseBusyDialog();
             await ShowErrorMessages(ex.Message);
         }
     }
+
     /// <summary>
     /// delete row
     /// </summary>
@@ -659,6 +663,8 @@
     {
         try
         {
+
+            onErrorFlag = false;
             var modToDowload = Mods.Where(mod => mod.IsDownloaded ==false & mod.IsPreviousVersion == false).ToList();
             var result = await DialogService.OpenAsync("Confirm match", ds =>
             @<RadzenStack Gap="1.5rem">
@@ -675,14 +681,12 @@
                     <tbody>
                 @foreach (var mod in modToDowload)
                     {
-                    if(mod.IsPotentialMatch){
                         <tr>
                             <td>@mod.Title</td>
                             <td>@mod.Description</td>
                             <td>@mod.TargetFolder</td>
                             <td>@mod.Version</td>
                         </tr>
-                    }
                     }
                     </tbody>
                 </table>
@@ -694,10 +698,26 @@
                     </RadzenStack>
                 </RadzenStack>
             </RadzenStack>
-            );
+    );
             if (result != null && result == true)
             {
-                modToDowload.ForEach(async m => await DownloadMod(m));
+                CloseBusyDialog();
+                CancellationTokenSource cts = new();
+
+                Parallel.ForEach(modToDowload, new ParallelOptions {CancellationToken =cts.Token, MaxDegreeOfParallelism = 2 },
+                m =>
+                {
+                    if (onErrorFlag)
+                    {
+                        cts.Cancel();
+                        CloseBusyDialog();                    
+                    }
+                    else
+                    {
+                        DownloadMod(m);
+
+                        }
+                });
             }
 
         }
@@ -710,7 +730,7 @@
     }
 
     /// <summary>
-    /// download mod 
+    /// download mod
     /// </summary>
     /// <param name="modDefinition"></param>
     /// <returns></returns>
@@ -718,19 +738,20 @@
     {
         try
         {
-            ShowBusyDialog($"Downloading", $"{modDefinition.Title}",$"Target Folder : {modDefinition.TargetFolder}",$"Size : {modDefinition.Size}",$"Version : {modDefinition.Version}");
+            ShowBusyDialog($"Downloading", $"{modDefinition.Title}", $"Target Folder : {modDefinition.TargetFolder}", $"Size : {modDefinition.Size}", $"Version : {modDefinition.Version}");
             await modManagerService.DownloadMod(modDefinition);
             StateHasChanged();
             CloseBusyDialog();
         }
         catch (Exception ex)
         {
+            onErrorFlag = true;
             CloseBusyDialog();
             if (ex.Message.Contains("403"))
                 await ShowErrorMessages("Your limit has been exceeded on Google drive. Please try later..");
             else
-                await ShowErrorMessages(ex.ToString());
-            throw;
+                await ShowErrorMessages(ex.Message);
+
         }
     }
     /// <summary>

@@ -1,21 +1,9 @@
 ﻿using eoj12.DCS.Toolkit.Models;
 using Google.Apis.Auth.OAuth2;
-using Google.Apis.Auth.OAuth2.Flows;
-using Google.Apis.Auth.OAuth2.Responses;
 using Google.Apis.Download;
 using Google.Apis.Drive.v3;
-using Google.Apis.Drive.v3.Data;
 using Google.Apis.Services;
-using Google.Apis.Util.Store;
-using Microsoft.Extensions.Configuration;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Web;
-using static Google.Apis.Drive.v3.DriveService;
-using static System.Formats.Asn1.AsnWriter;
 
 namespace eoj12.DCS.Toolkit.Services
 {
@@ -110,10 +98,12 @@ namespace eoj12.DCS.Toolkit.Services
                 var file = request.Execute();
 
                 if (file != null)
-                {
-                    webFileInfo = new WebFileInfo(file.Name, Path.GetExtension(file.Name), stream.Length, DateTime.Now, file.MimeType, new Uri(url));
+                {                   
                     await request.DownloadAsync(stream);
-                    webFileInfo.Stream = stream;
+                    webFileInfo = new WebFileInfo(file.Name, Path.GetExtension(file.Name), stream.Length, DateTime.Now, file.MimeType, new Uri(url))
+                    {
+                        Stream = stream
+                    };
                 }
                 else
                 {
@@ -164,9 +154,15 @@ namespace eoj12.DCS.Toolkit.Services
             string retUrl = string.Format("https://drive.google.com/uc?export=download&id={0}", documentId);
             return retUrl;
         }
+        public static bool IsGoogleUrl(string url)
+        {
+            Uri uri = new Uri(url);
+            return IsGoogleUrl(uri);
+        }
         public static bool IsGoogleUrl(Uri uri)
         {
             return uri.Host == "drive.google.com";
         }
+
     }
 }

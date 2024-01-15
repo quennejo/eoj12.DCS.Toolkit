@@ -1,11 +1,6 @@
 ﻿using eoj12.DCS.Toolkit.Data;
 using eoj12.DCS.Toolkit.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net;
-using System.Text;
-using System.Threading.Tasks;
 using System.Web;
 
 namespace eoj12.DCS.Toolkit.Services
@@ -134,39 +129,6 @@ namespace eoj12.DCS.Toolkit.Services
             return modInfo;
         }
 
-
-
-        ///// <summary>
-        ///// Download or Update a mod from a url
-        ///// </summary>
-        ///// <param name="mod"></param>
-        ///// <param name="Update">Fals by Default</param>
-        ///// <returns></returns>
-        //public async Task<Mod> DownloadMod(Mod mod, bool Update = false)
-        //{
-
-
-        //    var url = mod.Url.ToString();
-        //    var webFileInfo = await DownloadFileAsync(url);
-        //    mod.IsDownloading = false;
-        //    if (Update)
-        //        DeleteMod(mod);
-        //    mod.ModEntries = ExtractFileFromStream(webFileInfo, LocalDb.Settings.DCSSaveGamesPath, mod.TargetFolder);
-        //    mod.IsDownloaded = true;
-        //    mod.IsPreviousVersion = false;
-        //    mod.IsModDefinition = true;
-        //    mod.IsPotentialMatch = false;
-        //    mod.PotentialMatch = null;
-        //    LocalDb.Mods.Add(mod);
-        //    mod.IsExtracting = false;
-        //    SaveLocalDb();
-        //    ScanMods();
-        //    return mod;
-        //}
-        /// <summary>
-        /// Fix the google url
-        /// </summary>
-        /// <param name="webFileInfo"></param>
         /// <returns></returns>
         public static async Task<string> FormatGoogleUrlWithToken(WebFileInfo webFileInfo)
         {

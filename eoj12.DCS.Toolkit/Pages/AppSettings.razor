@@ -31,14 +31,14 @@
     }
     <br /><br />
     <RadzenText TextStyle="TextStyle.DisplayH5" TagName="TagName.H2">Use Google API for Download(Beta)</RadzenText>
-    @if (settings.UseGoogleApi)
+@*     @if (settings.UseGoogleApi)
     {
         <RadzenButton Icon="toggle_on" ButtonStyle="ButtonStyle.Success" Variant="Variant.Flat" Size="ButtonSize.Large" Click="@(args => DisableGoogleApi())" @onclick:stopPropagation="true" />
     }
     else
     {
         <RadzenButton Icon="toggle_off" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Large" Click="@(args => EnableGoogleApi())" @onclick:stopPropagation="true" />
-    }
+    } *@
     <br /><br />
     <RadzenText TextStyle="TextStyle.DisplayH5" TagName="TagName.H2">Application Folder  :</RadzenText>
     <RadzenTextBox Disabled="true" class="w-100" @bind-Value=appDataPath />
