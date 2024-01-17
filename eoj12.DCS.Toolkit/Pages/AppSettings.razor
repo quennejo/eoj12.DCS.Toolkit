@@ -29,9 +29,9 @@
     {
         <RadzenButton Icon="toggle_off" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Large" Click="@(args => EnableAdmin())" @onclick:stopPropagation="true" />
     }
-    <br /><br />
-    <RadzenText TextStyle="TextStyle.DisplayH5" TagName="TagName.H2">Use Google API for Download(Beta)</RadzenText>
-@*     @if (settings.UseGoogleApi)
+    @*     <br /><br />
+      <RadzenText TextStyle="TextStyle.DisplayH5" TagName="TagName.H2">Use Google API for Download(Beta)</RadzenText>
+     @if (settings.UseGoogleApi)
     {
         <RadzenButton Icon="toggle_on" ButtonStyle="ButtonStyle.Success" Variant="Variant.Flat" Size="ButtonSize.Large" Click="@(args => DisableGoogleApi())" @onclick:stopPropagation="true" />
     }

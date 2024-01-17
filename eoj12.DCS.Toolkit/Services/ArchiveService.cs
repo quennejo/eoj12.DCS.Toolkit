@@ -115,46 +115,53 @@ namespace eoj12.DCS.Toolkit.Services
         /// <returns></returns>
         public static List<ModEntry> ExtractRarFromFileInfo(System.IO.FileInfo fileInfo, string outputPath, string targetFolder)
         {
-
-            EnsureDirectory(outputPath);
-            var modFolder = outputPath.ToLower().Split("\\").LastOrDefault();
-            List<ModEntry> entries = new List<ModEntry>();
-            using (var archive = RarArchive.Open(fileInfo))
+            try
             {
-                foreach (var entry in archive.Entries)
+                EnsureDirectory(outputPath);
+                var modFolder = outputPath.ToLower().Split("\\").LastOrDefault();
+                List<ModEntry> entries = new List<ModEntry>();
+                using (var archive = RarArchive.Open(fileInfo))
                 {
-                    if (!entry.Key.ToLower().Contains("desktop.ini") && !entry.Key.ToLower().Contains("thumbs.db"))
+                    foreach (var entry in archive.Entries)
                     {
-                        ModEntry modEntry = new ModEntry()
+                        if (!entry.Key.ToLower().Contains("desktop.ini") && !entry.Key.ToLower().Contains("thumbs.db"))
                         {
-                            Name = entry.IsDirectory ? "" : Path.GetFileName(entry.Key),
-                            IsDirectory = entry.IsDirectory,
-                            CompressedLength = entry.CompressedSize,
-                            Path = TrimPath(outputPath, targetFolder, entry.Key),
-                            //LastWriteTime = entry.LastModifiedTime,
-                            Length = entry.Size
-                        };
-                        entries.Add(modEntry);
-
-                        if (!entry.IsDirectory)
-                        {
-                            string fileName = Path.GetFileName(modEntry.Path);
-                            string folder = Path.GetFullPath(modEntry.Path).Replace(fileName, "");
-
-                            EnsureDirectory(folder);
-
-                            entry.WriteToFile(modEntry.Path, new ExtractionOptions
+                            ModEntry modEntry = new ModEntry()
                             {
-                                ExtractFullPath = true,
-                                Overwrite = true,
+                                Name = entry.IsDirectory ? "" : Path.GetFileName(entry.Key),
+                                IsDirectory = entry.IsDirectory,
+                                CompressedLength = entry.CompressedSize,
+                                Path = TrimPath(outputPath, targetFolder, entry.Key),
+                                //LastWriteTime = entry.LastModifiedTime,
+                                Length = entry.Size
+                            };
+                            entries.Add(modEntry);
 
-                            });
+                            if (!entry.IsDirectory)
+                            {
+                                string fileName = Path.GetFileName(modEntry.Path);
+                                string folder = Path.GetFullPath(modEntry.Path).Replace(fileName, "");
+
+                                EnsureDirectory(folder);
+
+                                entry.WriteToFile(modEntry.Path, new ExtractionOptions
+                                {
+                                    ExtractFullPath = true,
+                                    Overwrite = true,
+
+                                });
+                            }
                         }
                     }
                 }
+                fileInfo.Delete();
+                return entries;
+            }catch(Exception ex)
+            {
+                fileInfo.Delete();
+                throw;
             }
-            fileInfo.Delete();
-            return entries;
+
         }
        
         /// <summary>

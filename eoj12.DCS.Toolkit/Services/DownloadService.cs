@@ -24,7 +24,7 @@ namespace eoj12.DCS.Toolkit.Services
 
 
             Uri uri = new Uri(url);
-            if (GoogleService.IsGoogleUrl(uri) && LocalDb.Settings.UseGoogleApi)
+            if (GoogleService.IsGoogleUrl(uri))
             {
                 var googleService = new GoogleService();
                 modInfo = await googleService.DownloadFileFromGoogleDrive(url);
