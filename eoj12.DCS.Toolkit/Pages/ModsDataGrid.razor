@@ -33,19 +33,23 @@
     <div class="form-group">
         <div class="row">
             <div class="col">
-            @if (ShowScanMod)
-            {
-                <RadzenButton ButtonStyle="ButtonStyle.Primary" Icon="scanner" class="mt-2 mb-4" Text="Scan Mods" Click="@ScanMod" Disabled=@(_modToInsert != null || _modToUpdate != null) />
-            }
+  
             @if (DefinitionMode)
             {
                 @if (_settings.IsAdmin)
                 {
                     <RadzenButton ButtonStyle="ButtonStyle.Primary" Icon="add_circle_outline" class="mt-2 mb-4" Text="Add Mod" Click="@InsertRow" Disabled=@(_modToInsert != null || _modToUpdate != null) />
                 }
-            }else
+            }
+            else
             {
-                <RadzenButton ButtonStyle="ButtonStyle.Primary" Icon="add_circle_outline" class="mt-2 mb-4" Text="Install Mod" Click="@InsertRow" Disabled=@(_modToInsert != null || _modToUpdate != null) />
+                @* <RadzenButton ButtonStyle="ButtonStyle.Primary" Icon="add_circle_outline" class="mt-2 mb-4" Text="Install Mod" Click="@InsertRow" Disabled=@(_modToInsert != null || _modToUpdate != null) /> *@
+                <RadzenTextBox Placeholder="Search..." Change=@(args => OnSearch(args)) class="w-50" aria-label="TextBox with placeholder" />
+                <RadzenButton ButtonStyle="ButtonStyle.Primary" Icon="search" class="mt-2 mb-4" Text="Search"  />
+            }
+            @if (ShowScanMod)
+            {
+                <RadzenButton ButtonStyle="ButtonStyle.Primary" Icon="scanner" class="mt-2 mb-4" Text="Scan Mods" Click="@ScanMod" Disabled=@(_modToInsert != null || _modToUpdate != null) />
             }
             @if (ShowLoadFileDefinition)
             {
@@ -103,7 +107,7 @@
         </div>
     </div>
 <RadzenDataGrid @ref="_modsGrid" AllowAlternatingRows="true" AllowFiltering="true" AllowPaging="false" PageSize="15" AllowSorting="true" EditMode="DataGridEditMode.Single" 
-                Data="@Mods" TItem="Mod" RowUpdate="@OnUpdateRow" RowCreate="@OnCreateRow" Sort="@Reset" Page="@Reset" Filter="@Reset" AllowGrouping="true" FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" >
+                Data="@Mods"  TItem="Mod" RowUpdate="@OnUpdateRow" RowCreate="@OnCreateRow" Sort="@Reset" Page="@Reset" Filter="@Reset" AllowGrouping="true" FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" >
     <GroupHeaderTemplate>
         @context.Data.Key
     </GroupHeaderTemplate>
@@ -292,6 +296,7 @@
     private bool filterLiveries = false;
     private bool filterTech = false;
     private bool onErrorFlag = false;
+    private List<Mod> ModsBackup { get; set; }
     public bool IsNew {
         get
         {
@@ -327,6 +332,31 @@
                 // await DownloadFileDefinition();
             }
 
+        }
+        catch (Exception ex)
+        {
+            await ShowErrorMessages(ex.Message);
+        }
+    }
+
+    private async Task OnSearch(string value)
+    {
+
+        try
+        {
+            Mods = await modManagerService.GetMods(true);
+            if (string.IsNullOrEmpty(value))
+            {
+                Mods = await modManagerService.GetMods(true);
+            }
+            else
+            {
+                Mods = Mods.Where(m => m.Title.ToLower().Contains(value) || m.Folder.ToLower().Contains(value) || m.Description.ToLower().Contains(value)).ToList();
+            }
+
+            _modsGrid.Reload();
+            
+            StateHasChanged();
         }
         catch (Exception ex)
         {
@@ -569,27 +599,52 @@
             }
             if (Mods.Contains(mod))
             {
+                var modPackage = Mods.Where(m => m.Title == mod.Title).ToList();
                 if (!DefinitionMode)
-                {
-                   // var modPackage = Mods.Where(m=>m.name == mod.na)
-
+                {            
                     var result = await DialogService.OpenAsync("Confirmation", ds =>
-                     @<RadzenStack Gap="1.5rem">
-                         <p>This operation will delete the mod from your computer. Do you want to continue ?</p>
+                    @<RadzenStack Gap="1.5rem">
+                    <p>This operation will delete the following mods from your computer. Do you want to continue ?</p>
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Title</th>
+                                    <th>Description</th>
+                                    <th>TargetFolder</th>
+                                    <th>Version</th>
+                                    <th>Size</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            @foreach (var mod in modPackage)
+                            {
+                                <tr>
+                                    <td>@mod.Title</td>
+                                    <td>@mod.Description</td>
+                                    <td>@mod.TargetFolder</td>
+                                    <td>@mod.Version</td>
+                                    <td>@mod.Size</td>
+                                </tr>
+                            }
+                            </tbody>
+                        </table>
 
-
-                         <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
-                             <RadzenStack Orientation="Orientation.Horizontal">
-                                 <RadzenButton Text="Confirm" Click="() => ds.Close(true)" />
-                                 <RadzenButton Text="Cancel" Click="() => ds.Close(false)" ButtonStyle="ButtonStyle.Light" />
-                             </RadzenStack>
-                         </RadzenStack>
+                        <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+                            <RadzenStack Orientation="Orientation.Horizontal">
+                                <RadzenButton Text="Confirm" Click="() => ds.Close(true)" />
+                                <RadzenButton Text="Cancel" Click="() => ds.Close(false)" ButtonStyle="ButtonStyle.Light" />
+                            </RadzenStack>
+                        </RadzenStack>
                     </RadzenStack>
-                );
+
+    );
                     if (result != null && result == true)
                     {
-                        modManagerService.DeleteMod(mod);
-                        Mods.Remove(mod);
+                        foreach (var m in modPackage)
+                        {
+                            modManagerService.DeleteMod(m);
+                            Mods.Remove(m);
+                        }
                         await _modsGrid.Reload();
                     }
                 }
