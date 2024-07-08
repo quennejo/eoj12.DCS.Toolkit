@@ -94,11 +94,11 @@
                 <RadzenImage Src="/spacer.png" style="width: 50px;" />
                 <RadzenButton ButtonStyle="ButtonStyle.Primary" Icon="auto_fix_normal" class="mt-2 mb-4" Text="Match All" Click="@MatchAll" />
             }
-           @*  @if (DefinitionMode && Mods.Any(mod =>mod != null && mod.IsDownloaded ==false && mod.IsPreviousVersion == false))
+            @if (DefinitionMode && Mods.Any(mod =>mod != null && mod.IsDownloaded ==false && mod.IsPreviousVersion == false))
             {
                 <RadzenImage Src="/spacer.png" style="width: 50px;" />
-                <RadzenButton ButtonStyle="ButtonStyle.Primary" Icon="done" class="mt-2 mb-4" Text="Download All" Click="@DownloadAll" @onclick:stopPropagation="true" MouseEnter="@(args => ShowTooltip(args, new TooltipOptions(){ Text = "Downlaod missing mods",Position=TooltipPosition.Left}))" />
-             } *@
+                <RadzenButton ButtonStyle="ButtonStyle.Primary" Icon="done" class="mt-2 mb-4" Text="Download All" Click="@DownloadAll" @onclick:stopPropagation="true" MouseEnter="@(args => ShowTooltip(args, new TooltipOptions(){ Text = "Download missing mods",Position=TooltipPosition.Left}))" />
+             }
             </div>
         </div>
     </div>
@@ -210,7 +210,7 @@
                     }
                     else
                     {
-                        <RadzenButton Icon="download" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => DownloadMod(mod))" @onclick:stopPropagation="true" MouseEnter="@(args => ShowTooltip(args, new TooltipOptions(){ Text = "Downlaod Mod",Position=TooltipPosition.Left}))" />
+                        <RadzenButton Icon="download" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => DownloadMod(mod))" @onclick:stopPropagation="true" MouseEnter="@(args => ShowTooltip(args, new TooltipOptions(){ Text = "Download Mod",Position=TooltipPosition.Left}))" />
                     }                        
             </Template>
         </RadzenDataGridColumn>
@@ -571,6 +571,8 @@
             {
                 if (!DefinitionMode)
                 {
+                   // var modPackage = Mods.Where(m=>m.name == mod.na)
+
                     var result = await DialogService.OpenAsync("Confirmation", ds =>
                      @<RadzenStack Gap="1.5rem">
                          <p>This operation will delete the mod from your computer. Do you want to continue ?</p>
@@ -582,8 +584,8 @@
                                  <RadzenButton Text="Cancel" Click="() => ds.Close(false)" ButtonStyle="ButtonStyle.Light" />
                              </RadzenStack>
                          </RadzenStack>
-        </RadzenStack>
-    );
+                    </RadzenStack>
+                );
                     if (result != null && result == true)
                     {
                         modManagerService.DeleteMod(mod);
@@ -666,7 +668,7 @@
 
             onErrorFlag = false;
             var modToDowload = Mods.Where(mod => mod.IsDownloaded ==false & mod.IsPreviousVersion == false).ToList();
-            var result = await DialogService.OpenAsync("Confirm match", ds =>
+            var result = await DialogService.OpenAsync("Confirm Download", ds =>
             @<RadzenStack Gap="1.5rem">
                 <p>Download the followings mods?</p>
                 <table class="table">
@@ -676,6 +678,7 @@
                             <th>Description</th>
                             <th>TargetFolder</th>
                             <th>Version</th>
+                            <th>Size</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -686,6 +689,7 @@
                             <td>@mod.Description</td>
                             <td>@mod.TargetFolder</td>
                             <td>@mod.Version</td>
+                            <td>@mod.Size</td>
                         </tr>
                     }
                     </tbody>
@@ -698,26 +702,33 @@
                     </RadzenStack>
                 </RadzenStack>
             </RadzenStack>
-    );
+            );
             if (result != null && result == true)
             {
-                CloseBusyDialog();
-                CancellationTokenSource cts = new();
-
-                Parallel.ForEach(modToDowload, new ParallelOptions {CancellationToken =cts.Token, MaxDegreeOfParallelism = 2 },
-                m =>
+             
+                StateHasChanged();             
+                ShowBusyDialog($"Downloading all missing mods");
+                foreach (var m in modToDowload)
                 {
-                    if (onErrorFlag)
-                    {
-                        cts.Cancel();
-                        CloseBusyDialog();                    
+                    try{
+                        await modManagerService.DownloadMod(m);
                     }
-                    else
+                    catch (Exception ex)
                     {
-                        DownloadMod(m);
+                        onErrorFlag = true;
+                        CloseBusyDialog();
+                        if (ex.Message.Contains("403"))
+                            await ShowErrorMessages("Your limit has been exceeded on Google drive. Please try later..");
+                        else if (ex.Message.Contains("End of Central Directory record could not be found"))
+                            await ShowErrorMessages(string.Format(Names.ErrorMessages.TWOGBLIMIT,m.Title));
+                        else
+                            await ShowErrorMessages(ex.Message);
+                        break;
 
-                        }
-                });
+                    }
+                }
+                if(onErrorFlag == false)
+                    CloseBusyDialog();
             }
 
         }
@@ -749,6 +760,8 @@
             CloseBusyDialog();
             if (ex.Message.Contains("403"))
                 await ShowErrorMessages("Your limit has been exceeded on Google drive. Please try later..");
+            else if (ex.Message.Contains("End of Central Directory record could not be found"))
+                await ShowErrorMessages(string.Format(Names.ErrorMessages.TWOGBLIMIT, modDefinition.Title));
             else
                 await ShowErrorMessages(ex.Message);
 

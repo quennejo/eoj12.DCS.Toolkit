@@ -151,7 +151,7 @@ namespace eoj12.DCS.Toolkit.Services
                                                                                 && m.TargetFolder.ToLower() == squadronMod.TargetFolder.ToLower()
                                                                                 && m.Version.ToLower() != squadronMod.Version.ToLower()
                                                                                 && !m.IsModDefinition);
-                    if (potentialMatch != null)
+                    if (potentialMatch != null && potentialMatch.Title.ToLower() != "liveries")
                     {
                         squadronMod.IsPotentialMatch = true;
                         squadronMod.PotentialMatch = potentialMatch;

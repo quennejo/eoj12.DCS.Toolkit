@@ -23,5 +23,9 @@ namespace eoj12.DCS.Toolkit.Names
         public static List<string> FoldersList { get; internal set; } = new List<string>() {AIRCRAFT, TECH, LIVERIES };
 
     }
-   
+
+    public static class ErrorMessages
+    {
+        public const string TWOGBLIMIT = @"The mod {0} is larger than 2 GB are not supported, please use the manual installation procedure below.<br/><br/><p>Click Squadron Mods on left menu </p><ul><li>Click Load Definition file </li><li>Click link on URL column</li></ul><p>Once download and installed, Click My Mods on left menu</p><ul><li>Click Scan Mods to update your mod pag</li></ul><p>Click Squadron Mods on left menu</p><ul><li>Click Load Definition file</li><li>Click Match on installed mod</li><li>Click Confirm</li></ul>";
+    }
 }
