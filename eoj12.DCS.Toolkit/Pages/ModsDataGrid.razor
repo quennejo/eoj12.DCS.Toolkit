@@ -15,18 +15,34 @@
 {
     <div class="form-group">
         <RadzenCard>
-        <div class="row">
-            <div class="col">
-                <div class="row">
-                    <div class="col">                       
-                        <RadzenTextBox @bind-value="_url" Style="width:800px" Placeholder="Enter mod definition Url"> </RadzenTextBox>
-                    </div>
-                    <div class="col">
-                        <RadzenButton Shade="Shade.Default" ButtonStyle=" ButtonStyle.Primary" Icon="rotate_right" Text="Load Definition file" Click="@DownloadFileDefinition" Disabled="@string.IsNullOrEmpty(_url)" />
-                    </div>
-                </div>
-            </div>
-        </div>
+
+
+            <RadzenRow class="rz-text-align-left " Gap="1rem">
+                <RadzenColumn Size="2" >
+                    <RadzenTextBox @bind-value="_urlDescription" Style="width: 100%" Placeholder="Description (optional)"> </RadzenTextBox>
+                </RadzenColumn>
+                <RadzenColumn Size="4" >
+                    <RadzenTextBox @bind-value="_url" Style="width: 100%" Placeholder="Enter mod definition Url"> </RadzenTextBox>
+                </RadzenColumn>
+                <RadzenColumn >
+                    <RadzenButton Shade="Shade.Default" ButtonStyle=" ButtonStyle.Primary" Icon="rotate_right" Text="Load Definition file" Click="@(args => DownloadFileDefinition(_url))" Disabled="@string.IsNullOrEmpty(_url)" />
+                </RadzenColumn>
+            </RadzenRow>
+            @if (_settings.IsAdmin)
+            {
+                <br />
+                <RadzenRow class="rz-text-align-left " Gap="1rem">
+                <RadzenColumn Size="2">
+                    <RadzenTextBox @bind-value="_urlDescription2" Style="width: 100%" Placeholder="Description #2 (optional)"> </RadzenTextBox>
+                </RadzenColumn>
+                <RadzenColumn Size="4">
+                    <RadzenTextBox @bind-value="_url2" Style="width: 100%" Placeholder="Enter mod definition Url #2"> </RadzenTextBox>
+                </RadzenColumn>
+                <RadzenColumn>
+                    <RadzenButton Shade="Shade.Default" ButtonStyle=" ButtonStyle.Primary" Icon="rotate_right" Text="Load Definition file #2" Click="@(args => DownloadFileDefinition(_url2))" Disabled="@string.IsNullOrEmpty(_url)" />
+                </RadzenColumn>
+            </RadzenRow>
+            }
         </RadzenCard>
     </div>
 }
@@ -291,6 +307,9 @@
     Mod _modToUpdate;
     FileResult _file = null;
     private string _url = "";
+    private string _url2 = "";
+    private string _urlDescription = "";
+    private string _urlDescription2 = "";
     private Settings _settings = null;
     private bool filterPlane = false;
     private bool filterLiveries = false;
@@ -326,6 +345,10 @@
             if (string.IsNullOrEmpty(_settings.DCSSaveGamesPath))
                 NavigationManager.NavigateTo("/AppSettings");
             _url = _settings.SquadronUrl;
+            _urlDescription = _settings.SquadronDesctiption;
+            _url2 = _settings.SquadronUrl2;
+            _urlDescription2 = _settings.SquadronDesctiption2;
+
             if (DefinitionMode && !string.IsNullOrEmpty(_url))
             {
 
@@ -576,7 +599,7 @@
         catch (Exception ex)
         {
             CloseBusyDialog();
-            await ShowErrorMessages(ex.Message);
+            await ShowErrorMessages(ex.Message.ToString());
         }
     }
 
@@ -689,13 +712,16 @@
         //console.Log($"{args.Message}");
     }
 
-    private async Task DownloadFileDefinition()
+    private async Task DownloadFileDefinition(string url)
     {
         try
         {
             ShowBusyDialog("Downloading File Definition... ");
-            Mods=  await modManagerService.DownloadFileDefinitionAsync( _url);
+            Mods=  await modManagerService.DownloadFileDefinitionAsync( url);
             _settings.SquadronUrl = _url;
+            _settings.SquadronUrl2 = _url2;
+            _settings.SquadronDesctiption =_urlDescription ;
+            _settings.SquadronDesctiption2 = _urlDescription2;
             modManagerService.SaveSettings(_settings);
             StateHasChanged();
             CloseBusyDialog();
